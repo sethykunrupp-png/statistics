@@ -88,6 +88,42 @@
   .vtitle{fill:var(--bell);font-family:"Inter";font-weight:600;font-size:14px}
   .vsub{fill:#7f8ab6;font-family:"Inter";font-size:11px}
   .vaxis{stroke:#3a4570;stroke-width:1}
+  .regline{stroke:var(--gold);stroke-width:2.5;fill:none;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.4s ease .2s,opacity .8s}
+  .layer.on .regline{stroke-dashoffset:0}
+  .resid{stroke:var(--outlier);stroke-width:1.2;opacity:.5}
+  .signal{stroke:var(--teal);stroke-width:2.5;fill:none;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.6s ease .3s,opacity .8s}
+  .layer.on .signal{stroke-dashoffset:0}
+  .whyfloat{animation:whyfloat 8s ease-in-out infinite}
+  @keyframes whyfloat{0%,100%{transform:translate(0,0)}33%{transform:translate(4px,-6px)}66%{transform:translate(-4px,5px)}}
+  .tocgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:16px;align-content:start;padding:2px}
+  .tocsec .th{font-family:"Inter";font-weight:700;color:var(--bell);font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px}
+  .tocitem{display:block;width:100%;text-align:left;background:rgba(120,140,220,.06);border:1px solid rgba(120,140,220,.14);color:var(--ink);
+    font-family:"Inter";font-weight:500;font-size:13.5px;padding:8px 12px;border-radius:8px;margin-bottom:6px;cursor:pointer;transition:background .15s,border-color .15s}
+  .tocitem:hover{background:rgba(120,140,220,.17);border-color:rgba(140,160,230,.5)}
+  .tocitem .n{color:var(--dim);font-variant-numeric:tabular-nums;margin-right:8px;font-size:12px}
+  .quizbar{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:rgba(10,15,38,.92);backdrop-filter:blur(6px);padding:9px 11px;border-radius:10px;border:1px solid rgba(120,140,220,.2);margin-bottom:12px}
+  .qtimer{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;color:var(--gold);font-size:16px}
+  #qtime.low{color:var(--outlier)}
+  .qprog{color:var(--dim);font-size:13px}
+  .qbtns{display:flex;gap:8px;flex-wrap:wrap}
+  .qbtns button{padding:8px 14px;font-size:13px}
+  .qresult{opacity:0;height:0;overflow:hidden;transition:opacity .4s;text-align:center;font-family:"Fraunces",serif;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0}
+  .qresult.on{opacity:1;height:auto;margin:2px 0 12px}
+  .qresult b{color:var(--gold)}
+  .qlist{display:flex;flex-direction:column;gap:14px;padding-bottom:8px}
+  .qcard{background:rgba(120,140,220,.05);border:1px solid rgba(120,140,220,.14);border-radius:10px;padding:12px 14px}
+  .qq{font-weight:600;color:var(--ink);font-size:14.5px;margin-bottom:9px;line-height:1.4}
+  .qq .qn{color:var(--dim);margin-right:8px}
+  .qopts{display:grid;gap:7px}
+  .qopt{display:flex;align-items:center;gap:9px;text-align:left;background:rgba(255,255,255,.03);border:1px solid rgba(120,140,220,.16);color:var(--ink);font-family:"Inter";font-weight:500;font-size:13.5px;padding:8px 11px;border-radius:8px;cursor:pointer;transition:background .12s,border-color .12s}
+  .qopt:hover{background:rgba(255,255,255,.08)}
+  .qopt .mk{width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(140,160,230,.5);flex:0 0 auto;display:grid;place-items:center;font-size:11px;font-weight:600}
+  .qopt.sel{border-color:var(--cool);background:rgba(79,208,255,.12)}
+  .qopt.sel .mk{border-color:var(--cool);background:var(--cool);color:#08121f}
+  .qopt.correct{border-color:#5bd08a;background:rgba(91,208,138,.14)}
+  .qopt.correct .mk{border-color:#5bd08a;background:#5bd08a;color:#08121f}
+  .qopt.wrong{border-color:var(--outlier);background:rgba(255,95,109,.12)}
+  .qopt.wrong .mk{border-color:var(--outlier);background:var(--outlier);color:#08121f}
 
   /* ---- types illustration text ---- */
   .tbig{font-family:"Fraunces",serif;font-weight:600;fill:var(--ink)}
@@ -131,9 +167,9 @@
   @keyframes pulsering{0%,100%{opacity:.45}50%{opacity:1}}
 
   .formula{position:absolute;top:10px;right:14px;transform:translateY(-14px);z-index:5;text-align:left;
-    opacity:0;transition:opacity .8s,transform .8s;background:rgba(10,15,38,.8);border:1px solid rgba(120,140,220,.28);
+    opacity:0;pointer-events:none;transition:opacity .8s,transform .8s;background:rgba(10,15,38,.8);border:1px solid rgba(120,140,220,.28);
     border-radius:14px;padding:15px 19px;backdrop-filter:blur(8px);max-width:min(90vw,410px)}
-  .formula.on{opacity:1;transform:translateY(0)}
+  .formula.on{opacity:1;pointer-events:auto;transform:translateY(0)}
   .formula .eq{font-family:"Fraunces",serif;font-size:clamp(18px,3vw,26px);letter-spacing:.01em}
   .formula .eq sup{font-size:.62em}
   .formula .muted{color:var(--dim)}
@@ -171,6 +207,20 @@
   </div>
 
   <div class="viz">
+    <div class="panelBox" id="toc"></div>
+    <div class="panelBox" id="quiz">
+      <div class="quizbar">
+        <div class="qtimer">⏱ <span id="qtime">10:00</span></div>
+        <div class="qprog"><span id="qans">0</span> / 20 answered</div>
+        <div class="qbtns">
+          <button id="qShow">Show correct answers</button>
+          <button id="qScore" class="next">See my score</button>
+          <button id="qReset">Reset</button>
+        </div>
+      </div>
+      <div id="qresult" class="qresult"></div>
+      <div id="qlist" class="qlist"></div>
+    </div>
     <div class="typesTable" id="typesTable">
       <div class="tblScroll">
         <table class="vt">
@@ -202,6 +252,18 @@
     <div class="panelBox" id="xlCat"></div>
     <div class="panelBox" id="xlNum"></div>
     <div class="panelBox" id="xlTwo"></div>
+    <div class="panelBox" id="staReg"></div>
+    <div class="panelBox" id="nvn1"></div>
+    <div class="panelBox" id="sdse"></div>
+    <div class="panelBox" id="csvSurvey"></div>
+    <div class="panelBox" id="csvRaw"></div>
+    <div class="panelBox" id="csvFreq"></div>
+    <div class="panelBox" id="csvStats"></div>
+    <div class="panelBox" id="csvInterp"></div>
+    <div class="panelBox" id="povIntro"></div>
+    <div class="panelBox" id="povRaw"></div>
+    <div class="panelBox" id="povStats"></div>
+    <div class="panelBox" id="povInterp"></div>
 
     <svg viewBox="0 0 1000 560" id="svg" aria-hidden="true">
       <defs>
@@ -212,6 +274,13 @@
       <g class="layer" id="visCat"></g>
       <g class="layer" id="visNum"></g>
       <g class="layer" id="visTwo"></g>
+      <g class="layer" id="corrViz"></g>
+      <g class="layer" id="regViz"></g>
+      <g class="layer" id="whyViz"></g>
+      <g class="layer" id="csvChart"></g>
+      <g class="layer" id="povCat"></g>
+      <g class="layer" id="povNum"></g>
+      <g class="layer" id="povRel"></g>
       <g class="layer" id="axis"><line x1="80" y1="460" x2="920" y2="460" class="tick"/></g>
 
       <g class="layer" id="curveL">
@@ -261,6 +330,7 @@
 
   <div class="hint">press → or space to advance · ← to go back</div>
   <div class="controls">
+    <button id="menu" aria-label="Contents">☰</button>
     <button id="back">← Back</button>
     <div class="track" id="track"></div>
     <button class="next" id="next">Next →</button>
@@ -675,6 +745,419 @@ outside them as an outlier.</pre></div>
       A(gt,'text',{class:'vsub',x:x+4,y:y-2},'↑ Value');})();
   })();
 
+  // ---------- correlation / regression ----------
+  const BIVx=[1,2,3,4,5,6,7,8,9,10], BIVy=[36,44,43,52,51,61,60,68,72,73];
+  const bmx=BIVx.reduce((a,b)=>a+b,0)/BIVx.length, bmy=BIVy.reduce((a,b)=>a+b,0)/BIVy.length;
+  let Sxx=0,Syy=0,Sxy=0; BIVx.forEach((xv,i)=>{const dx=xv-bmx,dy=BIVy[i]-bmy;Sxx+=dx*dx;Syy+=dy*dy;Sxy+=dx*dy;});
+  const rC=Sxy/Math.sqrt(Sxx*Syy), b1=Sxy/Sxx, b0=bmy-b1*bmx, R2=rC*rC;
+  (function buildBiv(){
+    const Lx=175,Ty=150,W=590,H=268,Bt=Ty+H,Rx=Lx+W;
+    const xmin=0.5,xmax=10.5,ymin=Math.min(...BIVy)-6,ymax=Math.max(...BIVy)+6;
+    const sx=v=>Lx+(v-xmin)/(xmax-xmin)*W, sy=v=>Bt-(v-ymin)/(ymax-ymin)*H;
+    const A=(g,t,a,x)=>g.appendChild(mk(t,a,x));
+    const scatter=g=>{A(g,'line',{x1:Lx,y1:Bt,x2:Rx,y2:Bt,class:'vaxis'});A(g,'line',{x1:Lx,y1:Ty,x2:Lx,y2:Bt,class:'vaxis'});
+      A(g,'text',{class:'vsub',x:Rx,y:Bt+20,'text-anchor':'end'},'Experience (yrs) →');A(g,'text',{class:'vsub',x:Lx-6,y:Ty+2,'text-anchor':'end'},'↑ Salary ($k)');
+      BIVx.forEach((xv,i)=>A(g,'circle',{cx:sx(xv),cy:sy(BIVy[i]),r:5,fill:'var(--cool)',opacity:.88,filter:'drop-shadow(0 0 5px rgba(79,208,255,.5))'}));};
+    const gc=document.getElementById('corrViz'); scatter(gc);
+    (function(){const gx0=250,gx1=760,gy=478;A(gc,'line',{x1:gx0,y1:gy,x2:gx1,y2:gy,stroke:'#3a4570','stroke-width':3,'stroke-linecap':'round'});
+      [['−1',gx0],['0',(gx0+gx1)/2],['+1',gx1]].forEach(t=>A(gc,'text',{class:'vsub',x:t[1],y:gy+20,'text-anchor':'middle'},t[0]));
+      const gm=gx0+(rC+1)/2*(gx1-gx0);
+      A(gc,'circle',{cx:gm,cy:gy,r:8,fill:'var(--gold)',filter:'drop-shadow(0 0 8px rgba(255,203,91,.7))'});
+      A(gc,'text',{x:gm,y:gy-16,'text-anchor':'middle',class:'mlabel',fill:'var(--gold)'},`r ≈ ${rC.toFixed(2)}`);
+      A(gc,'text',{class:'vsub',x:(gx0+gx1)/2,y:gy-38,'text-anchor':'middle'},'strong positive');})();
+    const gr=document.getElementById('regViz');
+    BIVx.forEach((xv,i)=>A(gr,'line',{x1:sx(xv),y1:sy(BIVy[i]),x2:sx(xv),y2:sy(b0+b1*xv),class:'resid'}));
+    scatter(gr);
+    A(gr,'line',{class:'regline',x1:sx(xmin),y1:sy(b0+b1*xmin),x2:sx(xmax),y2:sy(b0+b1*xmax),pathLength:1});
+    A(gr,'text',{x:sx(3),y:sy(b0+b1*3)-14,class:'mlabel',fill:'var(--gold)'},`ŷ = ${b0.toFixed(1)} + ${b1.toFixed(2)}x`);
+    A(gr,'text',{x:Rx,y:Ty+4,'text-anchor':'end',class:'vsub',fill:'var(--bell)'},`R² ≈ ${R2.toFixed(2)}`);
+  })();
+  document.getElementById('staReg').innerHTML=`
+    <div class="xhead">Example — 10 employees: <b>Experience (yrs)</b> x = 1…10 &nbsp;vs&nbsp; <b>Salary ($k)</b> y = 36, 44, 43, 52, 51, 61, 60, 68, 72, 73.</div>
+    <div class="codeGrid">
+      <div class="codeCard"><div class="ct">Stata</div><pre class="code"><span class="cm">* correlation</span>
+correlate exp salary
+pwcorr exp salary, sig
+<span class="cm">* regression + graph</span>
+regress salary exp
+predict yhat
+twoway (scatter salary exp) (lfit salary exp)</pre></div>
+      <div class="codeCard"><div class="ct">Excel</div><pre class="code">r     =CORREL(A2:A11,B2:B11)
+slope =SLOPE(B2:B11,A2:A11)
+b0    =INTERCEPT(B2:B11,A2:A11)
+R²    =RSQ(B2:B11,A2:A11)
+<span class="cm">' graph:</span> select A:B ▸ Insert ▸ Scatter (X Y)
+  ▸ right-click a point ▸ Add Trendline ▸ Linear
+  ▸ tick "Display Equation" + "Display R-squared"
+<span class="cm">' full table:</span> Data ▸ Data Analysis ▸ Regression</pre></div>
+      <div class="codeCard"><div class="ct">AI prompt</div><pre class="code">Here are two columns, Experience and
+Salary [ paste the 10 rows ]. Compute
+Pearson r and fit salary = b0 + b1·exp.
+Report r, R², slope, intercept and whether
+the slope is significant; draw a scatter
+with the fitted line and interpret in one
+sentence.</pre></div>
+      <div class="codeCard"><div class="ct">Reading the output</div><pre class="code"> salary | Coef.  P&gt;|t|
+--------+--------------
+ exp    | ${b1.toFixed(2)}   0.000
+ _cons  | ${b0.toFixed(2)}
+--------+--------------
+ R-squared = ${R2.toFixed(2)}</pre>
+        <ul class="psteps" style="margin-top:10px">
+          <li><b>exp = ${b1.toFixed(2)}</b>: each extra year adds ≈ $${b1.toFixed(1)}k to predicted salary.</li>
+          <li><b>_cons = ${b0.toFixed(1)}</b>: predicted salary at 0 years.</li>
+          <li><b>P&gt;|t| = 0.000 &lt; 0.05</b> → experience is a significant predictor.</li>
+          <li><b>R² = ${R2.toFixed(2)}</b> → ${Math.round(R2*100)}% of salary variation is explained.</li>
+          <li><b>r = ${rC.toFixed(2)}</b> → very strong positive relationship.</li>
+        </ul></div>
+    </div>`;
+
+  // ---------- why statistics matters ----------
+  (function buildWhy(){
+    const g=document.getElementById('whyViz'), A=(t,a,x)=>g.appendChild(mk(t,a,x));
+    function emblem(type,cx,cy){const E=(t,a)=>g.appendChild(mk(t,a));
+      if(type==='scale'){const c='var(--gold)';
+        E('line',{x1:cx,y1:cy-16,x2:cx,y2:cy+14,stroke:c,'stroke-width':2});
+        E('line',{x1:cx-32,y1:cy-16,x2:cx+32,y2:cy-16,stroke:c,'stroke-width':2});
+        [-32,32].forEach(d=>{const ex=cx+d;
+          E('line',{x1:ex,y1:cy-16,x2:ex-10,y2:cy-2,stroke:c,'stroke-width':1.4});
+          E('line',{x1:ex,y1:cy-16,x2:ex+10,y2:cy-2,stroke:c,'stroke-width':1.4});
+          E('line',{x1:ex-12,y1:cy-2,x2:ex+12,y2:cy-2,stroke:c,'stroke-width':1.4});});
+        E('path',{d:`M${cx-12},${cy+14} L${cx+12},${cy+14} L${cx},${cy+4} Z`,fill:c});
+      } else if(type==='decide'){const c='var(--teal)';
+        E('circle',{cx:cx,cy:cy-18,r:4,fill:c});
+        E('line',{x1:cx,y1:cy-14,x2:cx,y2:cy-6,stroke:c,'stroke-width':2});
+        E('line',{x1:cx,y1:cy-6,x2:cx-26,y2:cy+14,stroke:c,'stroke-width':2});
+        E('line',{x1:cx,y1:cy-6,x2:cx+26,y2:cy+14,stroke:c,'stroke-width':2});
+        E('polyline',{points:`${cx+18},${cy+12} ${cx+24},${cy+18} ${cx+34},${cy+4}`,fill:'none',stroke:c,'stroke-width':2,'stroke-linecap':'round','stroke-linejoin':'round'});
+      } else {const c='var(--cool)';[14,24,18,30].forEach((h,i)=>E('rect',{x:cx-30+i*16,y:cy+16-h,width:11,height:h,fill:c,opacity:.85,rx:2}));
+        E('line',{x1:cx-34,y1:cy+16,x2:cx+34,y2:cy+16,stroke:'#3a4570','stroke-width':1});}
+    }
+    const noise=mk('g',{class:'whyfloat'});
+    [[-30,-18],[10,-30],[34,-6],[-18,20],[6,4],[-4,34],[26,26],[44,-24],[-40,8],[18,-12],[-12,-34],[38,12]]
+      .forEach(o=>noise.appendChild(mk('circle',{cx:230+o[0],cy:214+o[1],r:6,fill:'#5a6a9c',opacity:.5})));
+    g.appendChild(noise);
+    A('text',{class:'vsub',x:230,y:296,'text-anchor':'middle'},'noise · opinions · raw data');
+    A('line',{x1:342,y1:214,x2:452,y2:214,stroke:'var(--gold)','stroke-width':2.5,'marker-end':'url(#arrowhead)'});
+    A('text',{x:397,y:199,'text-anchor':'middle',class:'mlabel',fill:'var(--gold)'},'statistics');
+    const bx=500,by=286,bw=270,bh=140;
+    A('line',{x1:bx,y1:by,x2:bx+bw,y2:by,class:'vaxis'});A('line',{x1:bx,y1:by-bh,x2:bx,y2:by,class:'vaxis'});
+    const sig=[[0,18],[1,34],[2,52],[3,66],[4,92],[5,120]],px=i=>bx+i/5*bw,py=v=>by-v/130*bh;
+    A('polyline',{class:'signal',pathLength:1,fill:'none',points:sig.map(p=>`${px(p[0]).toFixed(1)},${py(p[1]).toFixed(1)}`).join(' ')});
+    sig.forEach(p=>A('circle',{cx:px(p[0]),cy:py(p[1]),r:4,fill:'var(--teal)',filter:'drop-shadow(0 0 5px rgba(51,230,192,.6))'}));
+    A('text',{class:'vsub',x:bx+bw/2,y:by+22,'text-anchor':'middle'},'signal · insight · clarity');
+    [{cx:230,em:'scale',t:'Evidence, not opinion',s:'test claims against real data'},
+     {cx:500,em:'decide',t:'Decide under uncertainty',s:'weigh risk and likelihood'},
+     {cx:770,em:'society',t:"See society's facts",s:'prices · health · incomes · trends'}
+    ].forEach(p=>{emblem(p.em,p.cx,384);
+      A('text',{class:'mlabel',x:p.cx,y:442,'text-anchor':'middle',fill:'var(--ink)'},p.t);
+      A('text',{class:'vsub',x:p.cx,y:462,'text-anchor':'middle'},p.s);});
+  })();
+
+  // ---------- quiz ----------
+  let startQuizTimer=()=>{}, pauseQuizTimer=()=>{};
+  const QUIZ=[
+    {q:'The most frequently occurring value in a dataset is the…',o:['Mean','Median','Mode','Range'],c:2},
+    {q:'“Eye colour: brown, blue, green” is which type of variable?',o:['Ordinal','Nominal','Interval','Ratio'],c:1},
+    {q:'The median of a dataset is…',o:['The most frequent value','The average','The middle value when sorted','The largest value'],c:2},
+    {q:'The mean is found by…',o:['Taking the middle value','Adding all values and dividing by the count','Picking the most frequent value','Subtracting the smallest from the largest'],c:1},
+    {q:'The range is calculated as…',o:['Q3 − Q1','Maximum − Minimum','Mean − Median','Σ(x − x̄)²'],c:1},
+    {q:'A bar chart is best for showing…',o:['Category counts','A relationship between two numbers','Cumulative percentages','A true zero'],c:0},
+    {q:'Which of these is a measure of central tendency?',o:['Mean','Range','Variance','Interquartile range'],c:0},
+    {q:'Which measure is most affected by outliers?',o:['Median','Mode','Mean','Interquartile range'],c:2},
+    {q:'A scatter plot is used to show…',o:['Category counts','The relationship between two numerical variables','A single distribution','Cumulative frequency'],c:1},
+    {q:'Which scale has a true zero, so ratios are meaningful?',o:['Temperature in °C','Weight in kg','A 1–5 satisfaction rating','IQ score'],c:1},
+    {q:'Variance measures…',o:['The middle value','The most common value','The average squared distance from the mean','The number of values'],c:2},
+    {q:'The standard deviation equals…',o:['The square of the variance','The square root of the variance','The mean of the deviations','Always zero'],c:1},
+    {q:'Temperature in °C is measured on which scale?',o:['Nominal','Ordinal','Interval','Ratio'],c:2},
+    {q:'In a right-skewed (positive) distribution, usually…',o:['Mean < Median','Mean = Median','Mean > Median','There is no mode'],c:2},
+    {q:'A correlation of r = −0.9 indicates…',o:['No relationship','A weak positive relationship','A strong negative relationship','A perfect positive relationship'],c:2},
+    {q:'By the IQR rule, a value is an outlier if it lies beyond…',o:['1 standard deviation','Q1 − 1.5·IQR or Q3 + 1.5·IQR','The mean','The median'],c:1},
+    {q:'In the five-number summary, Q2 is the…',o:['Minimum','First quartile','Median','Maximum'],c:2},
+    {q:'In simple linear regression ŷ = b₀ + b₁x, b₁ is the…',o:['Intercept','Slope — the change in y per unit of x','Correlation','Error term'],c:1},
+    {q:'The coefficient of determination R² represents…',o:['The slope of the line','The proportion of variation in y explained by x','The mean of y','The sample size'],c:1},
+    {q:'The coefficient of variation (CV) is…',o:['Variance minus the mean','Standard deviation ÷ mean (× 100%) — a unit-free spread','Mean ÷ median','Range ÷ IQR'],c:1},
+  ];
+  (function buildQuiz(){
+    const mkEl=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
+    const list=document.getElementById('qlist'),sel=new Array(QUIZ.length).fill(null),letters=['A','B','C','D'];
+    const qtime=document.getElementById('qtime'),qans=document.getElementById('qans'),qres=document.getElementById('qresult');
+    let locked=false, remain=600, tid=null;
+    QUIZ.forEach((it,qi)=>{
+      const card=mkEl('div','qcard'), q=mkEl('div','qq');
+      q.innerHTML=`<span class="qn">Q${qi+1}</span>${it.q}`; card.appendChild(q);
+      const opts=mkEl('div','qopts');
+      it.o.forEach((ot,oi)=>{const b=mkEl('button','qopt');b.dataset.q=qi;b.dataset.o=oi;
+        b.innerHTML=`<span class="mk">${letters[oi]}</span><span>${ot}</span>`;opts.appendChild(b);});
+      card.appendChild(opts); list.appendChild(card);
+    });
+    const optsOf=qi=>[...list.querySelectorAll(`.qopt[data-q="${qi}"]`)];
+    list.addEventListener('click',e=>{const b=e.target.closest('.qopt');if(!b||locked)return;
+      const qi=+b.dataset.q,oi=+b.dataset.o; sel[qi]=oi;
+      optsOf(qi).forEach(x=>x.classList.remove('sel','correct','wrong'));
+      b.classList.add('sel'); qres.classList.remove('on');
+      qans.textContent=sel.filter(v=>v!==null).length;});
+    function reveal(){QUIZ.forEach((it,qi)=>{const os=optsOf(qi);
+      os.forEach((x,i)=>{x.classList.remove('correct','wrong');x.querySelector('.mk').textContent=letters[i];});
+      os[it.c].classList.add('correct'); os[it.c].querySelector('.mk').textContent='✓';
+      if(sel[qi]!=null&&sel[qi]!==it.c){os[sel[qi]].classList.add('wrong');os[sel[qi]].querySelector('.mk').textContent='✗';}});}
+    function score(){const n=QUIZ.reduce((a,it,qi)=>a+(sel[qi]===it.c?1:0),0),pct=Math.round(n/QUIZ.length*100);
+      qres.innerHTML=`You scored <b>${n} / ${QUIZ.length}</b> — <b>${pct}%</b>`; qres.classList.add('on');}
+    function reset(){pauseQuizTimer(); sel.fill(null); locked=false; remain=600;
+      list.querySelectorAll('.qopt').forEach(x=>x.classList.remove('sel','correct','wrong'));
+      list.querySelectorAll('.qcard').forEach(card=>card.querySelectorAll('.qopt .mk').forEach((m,i)=>m.textContent=letters[i]));
+      qans.textContent='0'; qres.classList.remove('on'); qtime.textContent='10:00'; qtime.classList.remove('low'); startQuizTimer();}
+    document.getElementById('qShow').addEventListener('click',reveal);
+    document.getElementById('qScore').addEventListener('click',score);
+    document.getElementById('qReset').addEventListener('click',reset);
+    const fmt=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    startQuizTimer=()=>{if(tid||locked||remain<=0)return; tid=setInterval(()=>{remain--; qtime.textContent=fmt(Math.max(0,remain));
+      qtime.classList.toggle('low',remain<=60); if(remain<=0){clearInterval(tid);tid=null;locked=true;reveal();score();}},1000);};
+    pauseQuizTimer=()=>{if(tid){clearInterval(tid);tid=null;}};
+  })();
+
+  // ---------- n vs n-1 · SD vs SE ----------
+  const sVar=sumsq/(n-1), sSD=Math.sqrt(sVar), SE=sSD/Math.sqrt(n);
+  document.getElementById('nvn1').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Two versions of variance</div>
+        <div class="fence">Population: σ² = Σ(x − μ)² ⁄ N &nbsp;→&nbsp; divide by <b>N</b> (you have every value).<br><br>Sample: s² = Σ(x − x̄)² ⁄ (n − 1) &nbsp;→&nbsp; divide by <b>n − 1</b> (the data is a sample).</div>
+        <div class="ph" style="margin-top:12px">Why n − 1?  (Bessel's correction)</div>
+        <ul class="psteps">
+          <li>x̄ is computed from the same data, so deviations around it are on average a bit too small.</li>
+          <li>Dividing by n would make s² biased low; dividing by n − 1 corrects that bias.</li>
+          <li>Degrees of freedom: once x̄ is fixed the deviations must sum to zero, so only n − 1 are free to vary.</li>
+          <li>For large n the two answers nearly coincide.</li>
+        </ul>
+      </div>
+      <div class="pcol">
+        <div class="ph">Our data — Σ(x − x̄)² = ${f(sumsq)}, n = ${n}</div>
+        <table class="kv"><tr><th>Use</th><th>Divisor</th><th>Variance</th><th>SD</th></tr>
+          <tr><td>Population (÷ n)</td><td>${n}</td><td>${variance.toFixed(2)}</td><td>${std.toFixed(2)}</td></tr>
+          <tr><td>Sample (÷ n−1)</td><td>${n-1}</td><td>${sVar.toFixed(2)}</td><td>${sSD.toFixed(2)}</td></tr></table>
+        <div class="fence" style="margin-top:8px">Rule of thumb: a whole population → <b>n</b>; a sample used to infer about a population → <b>n − 1</b>.</div>
+        <div class="ph" style="margin-top:12px">In software</div>
+        <pre class="code">Excel   VAR.P / STDEV.P   → n
+        VAR.S / STDEV.S   → n − 1
+Stata   summarize x       → n − 1 (sample)
+Python  np.var(x)         → n
+        np.var(x, ddof=1) → n − 1
+        pandas .var()     → n − 1</pre>
+      </div>
+    </div>`;
+  document.getElementById('sdse').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Standard deviation (SD)</div>
+        <div class="fence">Spread of the <b>data</b> around the mean, in the same units as the data. It says how much individual values vary.</div>
+        <div class="ph" style="margin-top:12px">Standard error of the mean (SE)</div>
+        <div class="fence">SE = SD ⁄ √n. How precisely the <b>sample mean</b> estimates the true mean — the SD of x̄ across repeated samples.</div>
+      </div>
+      <div class="pcol">
+        <div class="ph">The key difference</div>
+        <ul class="psteps">
+          <li><b>SD</b> describes the observations; it stays about the same as n grows.</li>
+          <li><b>SE</b> describes the mean's precision; it shrinks as n grows — bigger sample, tighter estimate.</li>
+          <li>Report <b>SD</b> for data spread; use <b>SE</b> for error bars and confidence intervals on a mean.</li>
+          <li>95% CI for the mean ≈ x̄ ± 1.96 · SE.</li>
+        </ul>
+        <div class="ph" style="margin-top:12px">Our data — x̄ = ${f(mean)}, n = ${n}</div>
+        <table class="kv"><tr><th>Quantity</th><th>Formula</th><th>Value</th></tr>
+          <tr><td>Sample SD</td><td>√(Σ(x−x̄)² ⁄ (n−1))</td><td>${sSD.toFixed(2)}</td></tr>
+          <tr><td>Standard error</td><td>SD ⁄ √n</td><td>${SE.toFixed(2)}</td></tr>
+          <tr><td>95% CI of mean</td><td>x̄ ± 1.96·SE</td><td>${(mean-1.96*SE).toFixed(1)} … ${(mean+1.96*SE).toFixed(1)}</td></tr></table>
+      </div>
+    </div>`;
+
+  // ---------- case study: Brand X survey ----------
+  const RAW=[4,5,3,4,2,5,4,3,1,4,5,4,3,4,5,2,4,5,3,4,1,5,4,3,4,2,5,4,3,5];
+  const rn=RAW.length, rcount={1:0,2:0,3:0,4:0,5:0}; RAW.forEach(v=>rcount[v]++);
+  const rmean=RAW.reduce((a,b)=>a+b,0)/rn, rsorted=[...RAW].sort((a,b)=>a-b), rmed=med(rsorted);
+  let rmode=1,rmc=0; [1,2,3,4,5].forEach(k=>{if(rcount[k]>rmc){rmc=rcount[k];rmode=k;}});
+  const rmin=Math.min(...RAW),rmax=Math.max(...RAW),rrange=rmax-rmin;
+  const rss=RAW.reduce((a,v)=>a+(v-rmean)**2,0), rvarS=rss/(rn-1), rsdS=Math.sqrt(rvarS), rcv=rsdS/rmean*100;
+  const pctSat=(rcount[4]+rcount[5])/rn*100, pctNeu=rcount[3]/rn*100, pctDis=(rcount[1]+rcount[2])/rn*100;
+  const LBL={1:'Very dissatisfied',2:'Dissatisfied',3:'Neutral',4:'Satisfied',5:'Very satisfied'};
+
+  document.getElementById('csvSurvey').innerHTML=`
+    <div class="pcol" style="max-width:740px;margin:0 auto">
+      <div class="ph">Brand X — Customer Satisfaction Survey &nbsp;(n = ${rn} respondents)</div>
+      <div class="fence"><b>Q1.</b> Overall, how satisfied are you with Brand X?<br>
+        <span style="color:var(--cool)">1 = Very dissatisfied · 2 = Dissatisfied · 3 = Neutral · 4 = Satisfied · 5 = Very satisfied</span></div>
+      <ul class="psteps" style="margin-top:12px">
+        <li><b>Q2.</b> How likely are you to recommend Brand X? (0–10)</li>
+        <li><b>Q3.</b> Which product line do you mainly use? (Standard / Plus / Pro)</li>
+        <li><b>Q4.</b> How long have you been a customer? (months)</li>
+        <li><b>Q5.</b> Would you buy again? (Yes / No)</li>
+      </ul>
+      <div class="fence" style="margin-top:10px">This walkthrough analyses <b>Q1 — overall satisfaction (1–5)</b>, an ordinal rating, across all ${rn} respondents.</div>
+    </div>`;
+  document.getElementById('csvRaw').innerHTML=`
+    <div class="pcol" style="max-width:800px;margin:0 auto">
+      <div class="ph">Raw data — Q1 rating for each of the ${rn} respondents</div>
+      <div class="pdata">${RAW.map((v,i)=>`R${i+1}=${v}`).join('  ·  ')}</div>
+      <div class="fence" style="margin-top:10px">Responses in the order collected — hard to read as a list. Next, we organise them into a table.</div>
+    </div>`;
+  let cum=0,rows='';
+  [1,2,3,4,5].forEach(k=>{const fr=rcount[k],p=fr/rn*100;cum+=p;
+    rows+=`<tr><td>${k}</td><td>${LBL[k]}</td><td>${fr}</td><td>${p.toFixed(1)}%</td><td>${cum.toFixed(1)}%</td></tr>`;});
+  document.getElementById('csvFreq').innerHTML=`
+    <div class="pcol" style="max-width:720px;margin:0 auto">
+      <div class="ph">Frequency distribution — Q1 satisfaction</div>
+      <table class="kv"><tr><th>Rating</th><th>Meaning</th><th>Freq</th><th>%</th><th>Cum. %</th></tr>${rows}
+        <tr><td>Total</td><td>—</td><td>${rn}</td><td>100%</td><td>—</td></tr></table>
+      <div class="fence" style="margin-top:10px">The pattern is now clear: ratings cluster at <b>4 (Satisfied)</b>, with a small dissatisfied tail.</div>
+    </div>`;
+  document.getElementById('csvStats').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Descriptive statistics — Q1 (1–5)</div>
+        <table class="kv"><tr><th>Statistic</th><th>Value</th></tr>
+          <tr><td>Count (n)</td><td>${rn}</td></tr><tr><td>Mean</td><td>${rmean.toFixed(2)}</td></tr>
+          <tr><td>Median</td><td>${rmed}</td></tr><tr><td>Mode</td><td>${rmode}</td></tr>
+          <tr><td>Minimum</td><td>${rmin}</td></tr><tr><td>Maximum</td><td>${rmax}</td></tr>
+          <tr><td>Range</td><td>${rrange}</td></tr>
+          <tr><td>Variance (sample)</td><td>${rvarS.toFixed(2)}</td></tr>
+          <tr><td>Std deviation (sample)</td><td>${rsdS.toFixed(2)}</td></tr>
+          <tr><td>Coeff. of variation</td><td>${rcv.toFixed(0)}%</td></tr></table>
+      </div>
+      <div class="pcol">
+        <div class="ph">Sentiment shares</div>
+        <table class="kv"><tr><th>Group</th><th>Share</th></tr>
+          <tr><td>Satisfied (4–5)</td><td>${pctSat.toFixed(1)}%</td></tr>
+          <tr><td>Neutral (3)</td><td>${pctNeu.toFixed(1)}%</td></tr>
+          <tr><td>Dissatisfied (1–2)</td><td>${pctDis.toFixed(1)}%</td></tr></table>
+        <div class="fence" style="margin-top:12px">Mean ${rmean.toFixed(2)} &lt; Median ${rmed} → a slight left (negative) skew: a few low ratings pull the mean below the middle.</div>
+      </div>
+    </div>`;
+  document.getElementById('csvInterp').innerHTML=`
+    <div class="pcol" style="max-width:770px;margin:0 auto">
+      <div class="ph">Reading the result — start to finish</div>
+      <ul class="psteps">
+        <li><b>Centre:</b> median and mode are both <b>4 (Satisfied)</b>; the mean is ${rmean.toFixed(2)} — customers lean clearly positive.</li>
+        <li><b>Spread:</b> SD ≈ ${rsdS.toFixed(2)} on a 1–5 scale (CV ≈ ${rcv.toFixed(0)}%) — moderate disagreement, not unanimous.</li>
+        <li><b>Shape:</b> mean &lt; median → a slight negative skew; a minority of unhappy customers drags the average down.</li>
+        <li><b>Shares:</b> <b>${pctSat.toFixed(0)}%</b> satisfied, ${pctNeu.toFixed(0)}% neutral, <b>${pctDis.toFixed(0)}%</b> dissatisfied.</li>
+      </ul>
+      <div class="fence" style="margin-top:10px"><b>Decision:</b> Brand X is well regarded overall, but the ~${pctDis.toFixed(0)}% detractor tail and ${pctNeu.toFixed(0)}% neutrals are the group to win over — follow up on what drove the low ratings.</div>
+    </div>`;
+  (function buildCSVChart(){
+    const g=document.getElementById('csvChart'),A=(t,a,x)=>g.appendChild(mk(t,a,x));
+    const bx0=175,bw=110,gap=30,bY=440,maxH=250,mxF=Math.max(rcount[1],rcount[2],rcount[3],rcount[4],rcount[5]);
+    const cols=['#ff5f6d','#ffb45a','#ffcb5b','#33e6c0','#5bd08a'],short=['Very dissat.','Dissat.','Neutral','Satisfied','Very sat.'];
+    A('text',{class:'vtitle',x:500,y:158,'text-anchor':'middle'},`Brand X — overall satisfaction (n = ${rn})`);
+    A('line',{x1:150,y1:bY,x2:850,y2:bY,class:'vaxis'});
+    [1,2,3,4,5].forEach((k,i)=>{const fr=rcount[k],h=fr/mxF*maxH,x=bx0+i*(bw+gap);
+      A('rect',{x:x,y:bY-h,width:bw,height:h,fill:cols[i],rx:4,opacity:.9});
+      A('text',{x:x+bw/2,y:bY-h-10,'text-anchor':'middle',class:'mlabel',fill:cols[i]},fr);
+      A('text',{class:'vsub',x:x+bw/2,y:bY+20,'text-anchor':'middle',fill:'var(--ink)'},k);
+      A('text',{class:'vsub',x:x+bw/2,y:bY+36,'text-anchor':'middle'},short[i]);});
+  })();
+
+  // ---------- case study: poverty ----------
+  const POV=[
+    {e:'None',h:6,w:1.8,t:'Walk',g:'F'},{e:'Primary',h:5,w:2.5,t:'Bicycle',g:'M'},{e:'Secondary',h:4,w:4.0,t:'Motorbike',g:'M'},
+    {e:'Primary',h:7,w:2.0,t:'Walk',g:'F'},{e:'Tertiary',h:3,w:7.5,t:'Car',g:'M'},{e:'None',h:8,w:1.5,t:'Walk',g:'F'},
+    {e:'Secondary',h:4,w:4.5,t:'Motorbike',g:'M'},{e:'Primary',h:6,w:2.8,t:'Bicycle',g:'F'},{e:'Secondary',h:5,w:3.8,t:'Public',g:'M'},
+    {e:'Tertiary',h:2,w:8.0,t:'Car',g:'M'},{e:'Primary',h:5,w:2.3,t:'Walk',g:'F'},{e:'None',h:7,w:1.6,t:'Walk',g:'M'},
+    {e:'Secondary',h:3,w:4.2,t:'Motorbike',g:'F'},{e:'Primary',h:6,w:2.6,t:'Bicycle',g:'M'},{e:'Tertiary',h:4,w:6.8,t:'Car',g:'F'},
+    {e:'None',h:9,w:1.4,t:'Walk',g:'F'},{e:'Secondary',h:4,w:4.0,t:'Public',g:'M'},{e:'Primary',h:5,w:2.4,t:'Bicycle',g:'M'},
+    {e:'Tertiary',h:3,w:7.0,t:'Motorbike',g:'M'},{e:'None',h:6,w:1.9,t:'Walk',g:'F'},{e:'Secondary',h:5,w:3.6,t:'Public',g:'M'},
+    {e:'Primary',h:7,w:2.1,t:'Walk',g:'F'},{e:'Secondary',h:4,w:4.3,t:'Motorbike',g:'M'},{e:'Primary',h:6,w:2.7,t:'Bicycle',g:'F'},
+    {e:'Tertiary',h:2,w:7.8,t:'Car',g:'M'},{e:'None',h:8,w:1.7,t:'Walk',g:'F'},{e:'Secondary',h:3,w:4.6,t:'Motorbike',g:'M'},
+    {e:'Primary',h:5,w:2.2,t:'Bicycle',g:'F'},{e:'Tertiary',h:4,w:6.5,t:'Car',g:'M'},{e:'None',h:7,w:1.5,t:'Walk',g:'F'}
+  ];
+  const eduO=['None','Primary','Secondary','Tertiary'], trO=['Walk','Bicycle','Motorbike','Public','Car'];
+  const numSum=arr=>{const nn=arr.length,s=[...arr].sort((a,b)=>a-b),mn=arr.reduce((a,b)=>a+b,0)/nn;
+    const md=nn%2?s[(nn-1)/2]:(s[nn/2-1]+s[nn/2])/2, ss=arr.reduce((a,v)=>a+(v-mn)**2,0);
+    return {n:nn,mean:mn,median:md,min:s[0],max:s[nn-1],range:s[nn-1]-s[0],sd:Math.sqrt(ss/(nn-1))};};
+  const hhArr=POV.map(r=>r.h), wArr=POV.map(r=>r.w), hhS=numSum(hhArr), wS=numSum(wArr);
+  const eduF=eduO.map(e=>POV.filter(r=>r.e===e).length), trF=trO.map(t=>POV.filter(r=>r.t===t).length);
+  const headF=POV.filter(r=>r.g==='F').length, headM=POV.length-headF;
+  const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  const wByEdu=eduO.map(e=>avg(POV.filter(r=>r.e===e).map(r=>r.w)));
+  const wMale=avg(POV.filter(r=>r.g==='M').map(r=>r.w)), wFem=avg(POV.filter(r=>r.g==='F').map(r=>r.w));
+  const eduMode=eduO[eduF.indexOf(Math.max(...eduF))], trMode=trO[trF.indexOf(Math.max(...trF))];
+  const hhMode=(()=>{const c={};hhArr.forEach(v=>c[v]=(c[v]||0)+1);let m=hhArr[0],k=0;for(const x in c)if(c[x]>k){k=c[x];m=+x;}return m;})();
+  const wCV=wS.sd/wS.mean*100;
+
+  document.getElementById('povIntro').innerHTML=`
+    <div class="pcol" style="max-width:760px;margin:0 auto">
+      <div class="ph">A Poverty Study — 30 households · five variables</div>
+      <div class="fence">Which households are poor, and why? For each household we record five variables and look for the patterns behind poverty.</div>
+      <table class="kv" style="margin-top:12px"><tr><th>Variable</th><th>What it records</th><th>Scale</th></tr>
+        <tr><td>Education</td><td>Head's schooling: None → Tertiary</td><td>Ordinal</td></tr>
+        <tr><td>Household size</td><td>Number of people</td><td>Discrete</td></tr>
+        <tr><td>Wage / hour</td><td>Earnings in $</td><td>Continuous · ratio</td></tr>
+        <tr><td>Transportation</td><td>Main mode of travel</td><td>Nominal</td></tr>
+        <tr><td>Head of family</td><td>Male or female</td><td>Nominal</td></tr></table>
+    </div>`;
+  document.getElementById('povRaw').innerHTML=`
+    <div class="pcol"><div class="ph">Household data — 30 records</div>
+      <table class="vt"><thead><tr><th>#</th><th>Education</th><th>Size</th><th>Wage/hr</th><th>Transport</th><th>Head</th></tr></thead>
+      <tbody>${POV.map((r,i)=>`<tr><td>${i+1}</td><td>${r.e}</td><td>${r.h}</td><td>$${r.w.toFixed(1)}</td><td>${r.t}</td><td>${r.g==='F'?'Female':'Male'}</td></tr>`).join('')}</tbody></table>
+    </div>`;
+  document.getElementById('povStats').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Household size (people)</div>
+        <table class="kv"><tr><th>Statistic</th><th>Value</th></tr>
+          <tr><td>Mean</td><td>${hhS.mean.toFixed(1)}</td></tr><tr><td>Median</td><td>${hhS.median}</td></tr>
+          <tr><td>Mode</td><td>${hhMode}</td></tr><tr><td>Min–Max</td><td>${hhS.min}–${hhS.max}</td></tr>
+          <tr><td>Range</td><td>${hhS.range}</td></tr><tr><td>SD (sample)</td><td>${hhS.sd.toFixed(2)}</td></tr></table>
+        <div class="ph" style="margin-top:12px">Wage per hour ($)</div>
+        <table class="kv"><tr><th>Statistic</th><th>Value</th></tr>
+          <tr><td>Mean</td><td>$${wS.mean.toFixed(2)}</td></tr><tr><td>Median</td><td>$${wS.median.toFixed(1)}</td></tr>
+          <tr><td>Min–Max</td><td>$${wS.min.toFixed(1)}–$${wS.max.toFixed(1)}</td></tr>
+          <tr><td>SD (sample)</td><td>$${wS.sd.toFixed(2)}</td></tr><tr><td>CV</td><td>${wCV.toFixed(0)}%</td></tr></table>
+      </div>
+      <div class="pcol">
+        <div class="ph">Categorical summary</div>
+        <table class="kv"><tr><th>Variable</th><th>Most common</th><th>Count</th></tr>
+          <tr><td>Education</td><td>${eduMode}</td><td>${Math.max(...eduF)}</td></tr>
+          <tr><td>Transport</td><td>${trMode}</td><td>${Math.max(...trF)}</td></tr>
+          <tr><td>Head</td><td>${headM>=headF?'Male':'Female'}</td><td>${Math.max(headM,headF)}</td></tr></table>
+        <div class="fence" style="margin-top:12px">Mean wage: <b>male-headed $${wMale.toFixed(2)}</b> vs <b>female-headed $${wFem.toFixed(2)}</b> — female-headed households earn markedly less.</div>
+        <div class="fence" style="margin-top:8px">Female-headed share: <b>${(headF/POV.length*100).toFixed(0)}%</b> of households.</div>
+      </div>
+    </div>`;
+  document.getElementById('povInterp').innerHTML=`
+    <div class="pcol" style="max-width:780px;margin:0 auto">
+      <div class="ph">Reading the poverty data — start to finish</div>
+      <ul class="psteps">
+        <li><b>Education drives wages:</b> mean wage climbs from $${wByEdu[0].toFixed(1)} (None) to $${wByEdu[3].toFixed(1)} (Tertiary).</li>
+        <li><b>Gender gap:</b> female-headed households earn $${wFem.toFixed(2)}/hr vs $${wMale.toFixed(2)} for male-headed.</li>
+        <li><b>Larger &amp; poorer:</b> the lowest-wage households tend to be the biggest and rely on walking.</li>
+        <li><b>Transport mirrors income:</b> the poor walk or cycle; cars appear only among the top earners.</li>
+      </ul>
+      <div class="fence"><b>Policy read:</b> poverty concentrates in low-education, female-headed, larger households — the levers are schooling, female livelihoods, and affordable transport.</div>
+    </div>`;
+
+  const pal=['#4fd0ff','#33e6c0','#ffb45a','#ff77d9','#5bd08a'];
+  function bars(g,x0,w,baseY,maxH,labels,vals,cols,fmt){const A=(t,a,x)=>g.appendChild(mk(t,a,x));
+    const mx=Math.max(...vals)||1,bw=w/labels.length;
+    A('line',{x1:x0,y1:baseY,x2:x0+w,y2:baseY,class:'vaxis'});
+    labels.forEach((lb,i)=>{const h=vals[i]/mx*maxH,x=x0+i*bw+bw*0.15,bwi=bw*0.7;
+      A('rect',{x:x,y:baseY-h,width:bwi,height:h,fill:cols[i%cols.length],rx:3,opacity:.9});
+      A('text',{x:x+bwi/2,y:baseY-h-8,'text-anchor':'middle',class:'vsub',fill:cols[i%cols.length]},fmt?fmt(vals[i]):vals[i]);
+      A('text',{class:'vsub',x:x+bwi/2,y:baseY+18,'text-anchor':'middle'},lb);});}
+  const VT=(g,x,y,txt)=>g.appendChild(mk('text',{class:'vtitle',x,y,'text-anchor':'middle'},txt));
+  (function(){const g=document.getElementById('povCat');
+    VT(g,215,182,'Education'); bars(g,90,250,430,190,['None','Prim','Sec','Tert'],eduF,pal);
+    VT(g,515,182,'Transportation'); bars(g,375,290,430,190,['Walk','Bike','Moto','Public','Car'],trF,pal);
+    VT(g,815,182,'Head of family'); bars(g,700,230,430,190,['Male','Female'],[headM,headF],['#4fd0ff','#ff77d9']);})();
+  (function(){const g=document.getElementById('povNum');
+    const sizes=[2,3,4,5,6,7,8,9], hhFreq=sizes.map(s=>hhArr.filter(v=>v===s).length);
+    VT(g,300,172,'Household size (people)'); bars(g,120,360,400,180,sizes.map(String),hhFreq,['#33e6c0']);
+    g.appendChild(mk('text',{class:'vsub',x:300,y:434,'text-anchor':'middle'},`mean ${hhS.mean.toFixed(1)} · median ${hhS.median} · SD ${hhS.sd.toFixed(1)}`));
+    const wl=['1–2','2–3','3–4','4–5','5–6','6–7','7–8'], wf=wl.map((_,k)=>POV.filter(r=>Math.min(7,Math.floor(r.w))===k+1).length);
+    VT(g,700,172,'Wage per hour ($)'); bars(g,540,340,400,180,wl,wf,['#4fd0ff']);
+    g.appendChild(mk('text',{class:'vsub',x:710,y:434,'text-anchor':'middle'},`mean $${wS.mean.toFixed(2)} · median $${wS.median.toFixed(1)} · SD $${wS.sd.toFixed(2)}`));})();
+  (function(){const g=document.getElementById('povRel');
+    VT(g,300,172,'Mean wage by education'); bars(g,110,360,440,210,['None','Prim','Sec','Tert'],wByEdu,['#ff5f6d','#ffb45a','#33e6c0','#5bd08a'],v=>'$'+v.toFixed(1));
+    VT(g,715,172,'Mean wage by head of family'); bars(g,590,250,440,210,['Male','Female'],[wMale,wFem],['#4fd0ff','#ff77d9'],v=>'$'+v.toFixed(1));})();
+
   // ---------- shape panels ----------
   function skewPath(cx,baseY,w,h,skew){const pk=cx-skew*(w*0.11);
     const wL=skew>0?w*0.12:(skew<0?w*0.24:w*0.16),wR=skew>0?w*0.24:(skew<0?w*0.12:w*0.16);
@@ -707,11 +1190,17 @@ outside them as an outlier.</pre></div>
     mad:`<div class="eq" style="font-size:.82em">M<sub>i</sub> = 0.6745 ( x<sub>i</sub> − med ) ⁄ MAD</div><div class="work">MAD = <b>${f(MAD)}</b> · flag if <b>|M| &gt; 3.5</b></div><div class="note">outlier M ≈ <b>${modZ.toFixed(1)}</b> → flagged.</div>`
   };
 
+  FORMS.corr=`<div class="eq">r = <span class="muted">Σ(x−x̄)(y−ȳ) ⁄ √(Σ(x−x̄)²·Σ(y−ȳ)²)</span></div><div class="work">= <b>${Sxy.toFixed(0)}</b> ⁄ √(${Sxx.toFixed(0)}·${Syy.toFixed(0)}) ≈ <b>${rC.toFixed(3)}</b></div><div class="note">+1 perfect ↑ · 0 none · −1 perfect ↓</div>`;
+  FORMS.reg=`<div class="eq">ŷ = <span class="muted">b₀ + b₁x</span></div><div class="work">b₁ = S<sub>xy</sub>⁄S<sub>xx</sub> ≈ <b>${b1.toFixed(2)}</b> &middot; b₀ = ȳ − b₁x̄ ≈ <b>${b0.toFixed(2)}</b></div><div class="note">R² = r² ≈ <b>${R2.toFixed(2)}</b> — share of variation explained.</div>`;
+
   // ---------- steps ----------
-  const LK=['axis','curve','mean','median','mode','range','dev','cv','zsc','shape','iqr','mad','zthr','outRing','typesViz','visCat','visNum','visTwo'];
+  const LK=['axis','curve','mean','median','mode','range','dev','cv','zsc','shape','iqr','mad','zthr','outRing','typesViz','visCat','visNum','visTwo','corrViz','regViz','whyViz','csvChart','povCat','povNum','povRel'];
   const lay=o=>{const m={};LK.forEach(k=>m[k]=o[k]||0);return m;};
   const S=(w,s,o)=>Object.assign({w,s},o);
   const STEPS=[
+    S('Contents','Tap any topic below to jump straight to it — or press Next to begin from the start.',{panel:'toc',lay:lay({}),pts:'hidden'}),
+    S('Why Statistics Matters','Numbers turn opinion into evidence. Statistics is how we cut through the noise to decide under uncertainty — and how a society sees its own facts: prices, health, incomes, trends.',{lay:lay({whyViz:1}),pts:'hidden'}),
+    S('Quiz','A 10-minute check — answer the multiple-choice questions, then reveal the correct answers or tally your score. The timer runs while you\u2019re on this slide.',{panel:'quiz',lay:lay({}),pts:'hidden'}),
     S('Types of Variables','Before we measure anything — what kind of data is it? Every variable sits somewhere on this ladder, from names to true numbers.',{panel:'table',lay:lay({}),pts:'hidden'}),
     S('Nominal','Categories that are pure labels — no order to rank them by. Qualitative.',{kind:'type',typeId:'nominal',lay:lay({typesViz:1}),pts:'hidden'}),
     S('Ordinal','Categories with a real order, though the gaps between them may be uneven. Qualitative.',{kind:'type',typeId:'ordinal',lay:lay({typesViz:1}),pts:'hidden'}),
@@ -736,6 +1225,8 @@ outside them as an outlier.</pre></div>
     S('Range',`The full spread, smallest to largest. ${maxV} − ${minV} = ${range}`,{lay:lay({axis:1,curve:.12,mean:.2,median:.15,mode:.35,range:1}),pts:'settled'}),
     S('Deviations','The distance from every point back to the mean.',{lay:lay({axis:1,curve:.1,mean:1,range:.15,dev:1}),pts:'settled'}),
     S('Variance','Square those distances and average them. The shape you built is a normal distribution — variance is how wide its bell spreads.',{lay:lay({axis:1,curve:1,mean:.55,dev:.5}),pts:'settled',form:'var',arrow:[648,446]}),
+    S('Dividing by n or n-1','Population variance divides by n; sample variance divides by n − 1. Here is why — and when each one is the right choice.',{panel:'nvn1',lay:lay({}),pts:'hidden'}),
+    S('Standard Deviation vs Standard Error','SD says how spread the data are; SE says how precisely the sample mean is pinned down. SE = SD ⁄ √n, so it shrinks as the sample grows.',{panel:'sdse',lay:lay({}),pts:'hidden'}),
     S('Coefficient of Variation',`Spread against the mean: σ ⁄ x̄ ≈ ${cv.toFixed(0)}%. Compares scatter across datasets of different scales.`,{lay:lay({axis:1,curve:.5,mean:.4,cv:1}),pts:'settled',form:'cv',arrow:[426,352]}),
     S('Z-Scores',`Re-scale the axis into standard deviations from the mean. The outlier lands about ${zOut.toFixed(1)}σ out.`,{lay:lay({axis:1,curve:.5,mean:.4,zsc:1}),pts:'settled',form:'z',arrow:[612,332]}),
     S('Shape',`Symmetric, or skewed? The outlier pulls the mean past the median (${f(mean)} > ${f(median)}) — a positive, right skew.`,{lay:lay({axis:.2,shape:1}),pts:'dim',form:'shape',arrow:[790,300]}),
@@ -745,20 +1236,42 @@ outside them as an outlier.</pre></div>
     S('IQR at Scale','For thousands of rows you let software apply the exact same rule — in Excel, Stata, Python, R, or even an AI prompt.',{panel:'iqrCode',lay:lay({}),pts:'hidden'}),
     S('Z-Score Method','Measure each point in standard deviations. Beyond ±3σ is treated as an outlier.',{lay:lay({axis:1,curve:.4,zthr:1,outRing:1}),pts:'focus',form:'zmethod',arrow:[vx(mean+3*std),360]}),
     S('Modified Z-Score','Swap mean & σ for median & MAD — resistant to the very outliers it hunts. Flag when |M| > 3.5.',{lay:lay({axis:1,mad:1,outRing:1}),pts:'focus',form:'mad',arrow:[830,412]}),
+    S('Correlation',`Strength and direction of a straight-line link — r runs from −1 to +1. For 10 employees, salary vs experience gives r ≈ ${rC.toFixed(2)}: a very strong positive relationship.`,{lay:lay({corrViz:1}),pts:'hidden',form:'corr',arrow:[470,284]}),
+    S('Linear Regression',`Fit the best straight line, ŷ = b₀ + b₁x. Slope ≈ ${b1.toFixed(2)}: each extra year of experience adds about $${b1.toFixed(1)}k to salary. The red gaps are the residuals it minimizes.`,{lay:lay({regViz:1}),pts:'hidden',form:'reg',arrow:[470,300]}),
+    S('Correlation & Regression — Stata · Excel · AI','The same real-data analysis three ways — Stata, Excel, or an AI prompt — plus how to read the output.',{panel:'staReg',lay:lay({}),pts:'hidden'}),
+    S('Case Study: Brand Survey','A real workflow, end to end: a 30-person satisfaction survey for Brand X. Here is the questionnaire and the rating scale we will analyse.',{panel:'csvSurvey',lay:lay({}),pts:'hidden'}),
+    S('Raw Data','The 30 raw responses to Q1, exactly as they were collected.',{panel:'csvRaw',lay:lay({}),pts:'hidden'}),
+    S('Arranged in a Table','Count how often each rating appears — the frequency distribution, with percentages and a running total.',{panel:'csvFreq',lay:lay({}),pts:'hidden'}),
+    S('The Chart','The same table as a bar chart — the shape of customer sentiment at a glance.',{lay:lay({csvChart:1}),pts:'hidden'}),
+    S('Descriptive Statistics','Summarise the ratings in one screen of numbers — centre, spread, and sentiment shares.',{panel:'csvStats',lay:lay({}),pts:'hidden'}),
+    S('Interpretation','What does it all mean for the brand? Turning the numbers into a decision.',{panel:'csvInterp',lay:lay({}),pts:'hidden'}),
+    S('Case Study: Poverty','A second, richer workflow: 30 households and five variables — education, size, wage, transport, and who heads the family. Which are poor, and why?',{panel:'povIntro',lay:lay({}),pts:'hidden'}),
+    S('Household Data','The raw records — every household with its five values.',{panel:'povRaw',lay:lay({}),pts:'hidden'}),
+    S('Categorical Variables','Counts for the three categorical variables: education, transportation, and head of family.',{lay:lay({povCat:1}),pts:'hidden'}),
+    S('Numerical Variables','Distributions of the two numerical variables: household size and wage per hour.',{lay:lay({povNum:1}),pts:'hidden'}),
+    S('Poverty Statistics','The numbers side by side — centre and spread for the numeric variables, most-common for the categorical ones.',{panel:'povStats',lay:lay({}),pts:'hidden'}),
+    S('Wage & Poverty','The key patterns: mean wage rises with education, and male-headed households out-earn female-headed ones.',{lay:lay({povRel:1}),pts:'hidden'}),
+    S('Poverty — Interpretation','Putting it together — where poverty concentrates, and what to do about it.',{panel:'povInterp',lay:lay({}),pts:'hidden'}),
   ];
   const L={axis:document.getElementById('axis'),curve:document.getElementById('curveL'),mean:document.getElementById('meanL'),
     median:document.getElementById('medianL'),mode:document.getElementById('modeL'),range:document.getElementById('rangeL'),
     dev:document.getElementById('devL'),cv:document.getElementById('cvL'),zsc:document.getElementById('zL'),
     shape:document.getElementById('shapeL'),iqr:document.getElementById('iqrL'),mad:document.getElementById('madL'),
     zthr:document.getElementById('zthrL'),outRing:document.getElementById('outRingL'),typesViz:document.getElementById('typesViz'),
-    visCat:document.getElementById('visCat'),visNum:document.getElementById('visNum'),visTwo:document.getElementById('visTwo')};
+    visCat:document.getElementById('visCat'),visNum:document.getElementById('visNum'),visTwo:document.getElementById('visTwo'),
+    corrViz:document.getElementById('corrViz'),regViz:document.getElementById('regViz'),whyViz:document.getElementById('whyViz'),
+    csvChart:document.getElementById('csvChart'),povCat:document.getElementById('povCat'),povNum:document.getElementById('povNum'),povRel:document.getElementById('povRel')};
   const cap=document.getElementById('cap'),kicker=document.getElementById('kicker'),word=document.getElementById('word'),
     sub=document.getElementById('sub'),formula=document.getElementById('formula'),body=document.body,
-    nextB=document.getElementById('next'),backB=document.getElementById('back'),
-    tbl=document.getElementById('typesTable'),svgEl=document.getElementById('svg'),
+    nextB=document.getElementById('next'),backB=document.getElementById('back'),menuB=document.getElementById('menu'),
+    tbl=document.getElementById('typesTable'),svgEl=document.getElementById('svg'),tocEl=document.getElementById('toc'),quizEl=document.getElementById('quiz'),
     iqrDetailEl=document.getElementById('iqrDetail'),iqrCodeEl=document.getElementById('iqrCode'),
     orgCatEl=document.getElementById('orgCat'),orgNumEl=document.getElementById('orgNum'),orgMultiEl=document.getElementById('orgMulti'),
     xlCatEl=document.getElementById('xlCat'),xlNumEl=document.getElementById('xlNum'),xlTwoEl=document.getElementById('xlTwo'),
+    staRegEl=document.getElementById('staReg'),nvn1El=document.getElementById('nvn1'),sdseEl=document.getElementById('sdse'),
+    csvSurveyEl=document.getElementById('csvSurvey'),csvRawEl=document.getElementById('csvRaw'),csvFreqEl=document.getElementById('csvFreq'),
+    csvStatsEl=document.getElementById('csvStats'),csvInterpEl=document.getElementById('csvInterp'),
+    povIntroEl=document.getElementById('povIntro'),povRawEl=document.getElementById('povRaw'),povStatsEl=document.getElementById('povStats'),povInterpEl=document.getElementById('povInterp'),
     arrowPath=document.getElementById('arrowPath'),arrowL=document.getElementById('arrowL');
   let step=0; const N=STEPS.length;
   const setLayer=(el,o)=>{el.style.opacity=o;el.classList.toggle('on',o>0.05);};
@@ -774,11 +1287,33 @@ outside them as an outlier.</pre></div>
   for(let i=0;i<N;i++)track.appendChild(document.createElement('i'));
   const dots=[...track.children];
 
+  function goTo(i){ step=Math.max(0,Math.min(N-1,i)); render(); }
+  (function buildTOC(){
+    const SECTIONS=[
+      ['Foundations',['Why Statistics Matters','Quiz','Types of Variables','Nominal','Ordinal','Discrete','Continuous','Interval','Ratio']],
+      ['Organizing & Visualizing',['Organizing Categorical Data','Organizing Numerical Data','Visualizing Categorical Data','Categorical Charts in Excel','Visualizing Numerical Data','Numerical Charts in Excel','Visualizing Two Numerical Variables','Two-Variable Charts in Excel','Organizing Multidimensional Data']],
+      ['Describing One Variable',['Unstructured','Structured','Mean','Median','Mode','Range','Deviations','Variance','Dividing by n or n-1','Standard Deviation vs Standard Error','Coefficient of Variation','Z-Scores','Shape']],
+      ['Outliers',['Outliers','IQR Method','IQR — Five-Number Summary','IQR at Scale','Z-Score Method','Modified Z-Score']],
+      ['Relationships',['Correlation','Linear Regression','Correlation & Regression — Stata · Excel · AI']],
+      ['Case Study: Brand Survey',['Case Study: Brand Survey','Raw Data','Arranged in a Table','The Chart','Descriptive Statistics','Interpretation']],
+    ];
+    const idxOf=t=>STEPS.findIndex(s=>s.w===t);
+    let h='<div class="tocgrid">';
+    SECTIONS.forEach(([name,items])=>{h+=`<div class="tocsec"><div class="th">${name}</div>`;
+      items.forEach(t=>{const i=idxOf(t);if(i<0)return;
+        h+=`<button class="tocitem" data-i="${i}"><span class="n">${String(i+1).padStart(2,'0')}</span>${t}</button>`;});
+      h+='</div>';});
+    tocEl.innerHTML=h+'</div>';
+    tocEl.addEventListener('click',e=>{const b=e.target.closest('.tocitem');if(b)goTo(+b.dataset.i);});
+  })();
+  menuB.addEventListener('click',()=>goTo(0));
+
   function render(){
     const st=STEPS[step]; body.dataset.step=step;
     for(const k in L) setLayer(L[k],st.lay[k]);
-    const panels={table:tbl,iqrDetail:iqrDetailEl,iqrCode:iqrCodeEl,orgCat:orgCatEl,orgNum:orgNumEl,orgMulti:orgMultiEl,xlCat:xlCatEl,xlNum:xlNumEl,xlTwo:xlTwoEl};
+    const panels={toc:tocEl,quiz:quizEl,table:tbl,iqrDetail:iqrDetailEl,iqrCode:iqrCodeEl,orgCat:orgCatEl,orgNum:orgNumEl,orgMulti:orgMultiEl,xlCat:xlCatEl,xlNum:xlNumEl,xlTwo:xlTwoEl,staReg:staRegEl,nvn1:nvn1El,sdse:sdseEl,csvSurvey:csvSurveyEl,csvRaw:csvRawEl,csvFreq:csvFreqEl,csvStats:csvStatsEl,csvInterp:csvInterpEl,povIntro:povIntroEl,povRaw:povRawEl,povStats:povStatsEl,povInterp:povInterpEl};
     for(const k in panels) panels[k].classList.toggle('on', st.panel===k);
+    if(st.panel==='quiz') startQuizTimer(); else pauseQuizTimer();
     body.classList.toggle('drifton', st.pts==='scatter');
 
     if(st.kind==='type'){ setLayer(L.typesViz,0); drawType(st.typeId); requestAnimationFrame(()=>setLayer(L.typesViz,1)); }
