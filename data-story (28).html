@@ -1,0 +1,1986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Story of a Dataset</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: dark;
+    --ink:#eaf0ff; --dim:#8b96b8;
+    --gold:#ffcb5b; --teal:#33e6c0; --mag:#ff77d9;
+    --cool:#4fd0ff; --warm:#ffb45a; --outlier:#ff5f6d; --bell:#d6ddff;
+    --hdr:#4a72b8;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:inherit;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Inter",system-ui,sans-serif; color:var(--ink);
+    background:radial-gradient(120% 80% at 50% -10%, #1a2450 0%, #0c1230 45%, #05060f 100%);
+    overflow:hidden; display:flex; flex-direction:column; -webkit-font-smoothing:antialiased;
+  }
+  .stars{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+  .stars i{position:absolute;width:2px;height:2px;border-radius:50%;background:#cdd6ff;opacity:.25;animation:twinkle 6s ease-in-out infinite}
+  @keyframes twinkle{0%,100%{opacity:.08}50%{opacity:.4}}
+
+  .caption{position:relative;z-index:3;text-align:center;padding:min(4.5vh,30px) 20px 2px}
+  .kicker{font-size:13px;letter-spacing:.42em;color:var(--dim);height:16px;opacity:0;transition:opacity .6s}
+  .stage-word{font-family:"Fraunces",serif;font-weight:600;line-height:1;
+    font-size:clamp(32px,5.8vw,64px);letter-spacing:-.01em;margin:.1em 0 .16em;
+    opacity:0;transform:translateY(14px);transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1)}
+  .stage-sub{font-size:clamp(13px,2vw,17px);color:var(--dim);max-width:62ch;margin:0 auto;line-height:1.5;
+    opacity:0;transform:translateY(10px);transition:opacity .7s .08s,transform .7s .08s}
+  .swap-in .stage-word,.swap-in .stage-sub,.swap-in .kicker{opacity:1;transform:none}
+
+  .viz{position:relative;z-index:2;flex:1;display:grid;place-items:center;min-height:0;padding:0 12px}
+  svg{width:100%;max-width:1080px;height:100%;max-height:100%;overflow:visible}
+
+  /* ---- types table ---- */
+  .typesTable{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;gap:10px;
+    padding:4px 8px 8px;opacity:0;pointer-events:none;transition:opacity .6s}
+  .typesTable.on{opacity:1;pointer-events:auto}
+  .tblScroll{overflow:auto;border-radius:12px;flex:1}
+  table.vt{border-collapse:collapse;width:100%;min-width:760px;font-size:clamp(10px,1.15vw,13px)}
+  table.vt th,table.vt td{padding:8px 10px;text-align:left;vertical-align:top;border:1px solid rgba(120,140,220,.14)}
+  table.vt thead th{background:var(--hdr);color:#fff;font-weight:600;position:sticky;top:0}
+  table.vt tbody tr:nth-child(odd){background:rgba(120,140,220,.07)}
+  table.vt tbody tr:nth-child(even){background:rgba(120,140,220,.03)}
+  table.vt td b{color:var(--ink)}
+  .vt .cat{color:var(--cool)} .vt .num{color:var(--teal)}
+  .vt .yes{color:#5bd08a;font-weight:600}.vt .no{color:var(--outlier);font-weight:600}.vt .na{color:var(--dim)}
+  .tblFoot{font-size:clamp(11px,1.3vw,14px);color:var(--dim);line-height:1.5;text-align:center}
+  .tblFoot b{color:var(--gold)}
+
+  /* ---- detail / code panels ---- */
+  .panelBox{position:absolute;inset:0;z-index:4;opacity:0;pointer-events:none;transition:opacity .6s;overflow:auto;padding:2px 8px 10px}
+  .panelBox.on{opacity:1;pointer-events:auto}
+  .pwrap{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+  .pcol{flex:1 1 320px;min-width:270px}
+  .ph{font-family:"Inter";font-weight:600;color:var(--bell);font-size:13px;margin:8px 0 6px;letter-spacing:.02em}
+  .pdata{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:clamp(11px,1.3vw,13px);color:#bcd0f5;
+    background:rgba(0,0,0,.22);border:1px solid rgba(120,140,220,.16);border-radius:8px;padding:8px 10px;line-height:1.7}
+  .psteps{list-style:none;margin:2px 0;font-size:clamp(12px,1.4vw,14px);color:var(--dim);line-height:1.95}
+  .psteps li{padding-left:16px;position:relative}
+  .psteps li:before{content:"\2192";position:absolute;left:0;color:var(--gold)}
+  table.kv{border-collapse:collapse;width:100%;font-size:clamp(12px,1.4vw,14px);margin-bottom:12px}
+  table.kv th,table.kv td{border:1px solid rgba(120,140,220,.16);padding:7px 10px;text-align:left}
+  table.kv th{background:var(--hdr);color:#fff;font-weight:600}
+  table.kv td:first-child{color:var(--gold);font-weight:600}
+  table.kv td:last-child{color:var(--ink);font-weight:600;font-family:ui-monospace,monospace}
+  .fence{font-size:clamp(12px,1.4vw,14px);color:var(--dim);line-height:1.95;background:rgba(0,0,0,.2);
+    border:1px solid rgba(120,140,220,.16);border-radius:8px;padding:10px 12px}
+  .fence b{color:var(--gold)} .fence .flag{color:var(--outlier);font-weight:600}
+  .codeGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .codeCard .ct{font-family:"Inter";font-weight:600;color:var(--bell);font-size:13px;margin:0 0 6px}
+  .code{background:rgba(0,0,0,.30);border:1px solid rgba(120,140,220,.18);border-radius:10px;padding:11px 13px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:clamp(10.5px,1.2vw,12.5px);color:#cfe3ff;
+    white-space:pre;overflow-x:auto;line-height:1.55;margin:0}
+  .code .cm{color:#6d77a0}
+  .xhead{color:var(--dim);font-size:13px;margin:4px 0 12px}.xhead b{color:var(--bell)}
+  .xtip{margin-top:8px;font-size:12px;color:#6d77a0}
+  .icode{font-family:ui-monospace,Menlo,Consolas,monospace;background:rgba(0,0,0,.32);padding:1px 5px;border-radius:4px;color:#cfe3ff;font-size:.92em}
+  .vtitle{fill:var(--bell);font-family:"Inter";font-weight:600;font-size:14px}
+  .vsub{fill:#7f8ab6;font-family:"Inter";font-size:11px}
+  .vaxis{stroke:#3a4570;stroke-width:1}
+  .regline{stroke:var(--gold);stroke-width:2.5;fill:none;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.4s ease .2s,opacity .8s}
+  .layer.on .regline{stroke-dashoffset:0}
+  .resid{stroke:var(--outlier);stroke-width:1.2;opacity:.5}
+  .signal{stroke:var(--teal);stroke-width:2.5;fill:none;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.6s ease .3s,opacity .8s}
+  .layer.on .signal{stroke-dashoffset:0}
+  .whyfloat{animation:whyfloat 8s ease-in-out infinite}
+  @keyframes whyfloat{0%,100%{transform:translate(0,0)}33%{transform:translate(4px,-6px)}66%{transform:translate(-4px,5px)}}
+  .tocgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:16px;align-content:start;padding:2px}
+  .tocsec .th{font-family:"Inter";font-weight:700;color:var(--bell);font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px}
+  .tocitem{display:block;width:100%;text-align:left;background:rgba(120,140,220,.06);border:1px solid rgba(120,140,220,.14);color:var(--ink);
+    font-family:"Inter";font-weight:500;font-size:13.5px;padding:8px 12px;border-radius:8px;margin-bottom:6px;cursor:pointer;transition:background .15s,border-color .15s}
+  .tocitem:hover{background:rgba(120,140,220,.17);border-color:rgba(140,160,230,.5)}
+  .tocitem .n{color:var(--dim);font-variant-numeric:tabular-nums;margin-right:8px;font-size:12px}
+  .biolink{display:inline-block;font-family:"Inter";font-weight:600;font-size:14px;color:var(--ink);text-decoration:none;
+    background:linear-gradient(180deg,#5b6cff,#3d4bd6);padding:10px 22px;border-radius:999px;transition:filter .2s}
+  .biolink:hover{filter:brightness(1.12)}
+  .bioname{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(24px,4vw,34px);color:var(--ink)}
+  .biotag{color:var(--dim);font-size:13px;letter-spacing:.03em;margin-top:4px}
+  .ide{display:flex;gap:12px;height:100%;flex-wrap:wrap}
+  .ide .pane{flex:1 1 340px;min-width:280px;display:flex;flex-direction:column;min-height:0}
+  .ide .plab{font-family:"Inter";font-weight:600;color:var(--bell);font-size:13px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .ide .plab .status{font-size:12px;color:var(--gold);font-weight:500}
+  .ide .plab button{padding:6px 16px;font-size:13px}
+  .ide textarea{flex:1;min-height:260px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#cfe3ff;background:rgba(0,0,0,.32);border:1px solid rgba(120,140,220,.25);border-radius:10px;padding:12px;line-height:1.5;tab-size:4}
+  .ide .out{flex:1;min-height:260px;overflow:auto;background:rgba(0,0,0,.32);border:1px solid rgba(120,140,220,.25);border-radius:10px;padding:12px}
+  .ide .out pre{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#e6edff;white-space:pre-wrap;margin:0}
+  .ide .out img.pyfig{max-width:100%;border-radius:8px;margin-top:8px;display:block;background:#fff}
+  .ide #pyData{flex:0 0 auto;min-height:110px;max-height:40%}
+  .ide #pyCode{flex:1;min-height:170px}
+  .ide .plab code{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--gold);font-weight:600}
+  table.cheat{border-collapse:collapse;min-width:940px;font-size:11.5px}
+  table.cheat th,table.cheat td{border:1px solid rgba(120,140,220,.14);padding:6px 8px;text-align:left;vertical-align:top}
+  table.cheat thead th{background:var(--hdr);color:#fff;position:sticky;top:0;font-weight:600}
+  table.cheat td:first-child{color:var(--gold);font-weight:600;white-space:nowrap}
+  table.cheat code{font-family:ui-monospace,Menlo,Consolas,monospace;color:#cfe3ff;font-size:11px;white-space:nowrap}
+  .swot{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:840px;margin:6px auto 0}
+  .swot .q{border-radius:12px;padding:12px 14px;border:1px solid rgba(120,140,220,.2)}
+  .swot .q h4{font-family:"Inter";font-weight:700;font-size:12px;letter-spacing:.05em;margin-bottom:8px;text-transform:uppercase}
+  .swot .q ul{list-style:none;font-size:12.5px;color:var(--dim);line-height:1.65}
+  .swot .q li{padding-left:14px;position:relative;margin-bottom:2px}
+  .swot .q li:before{content:"•";position:absolute;left:2px;color:currentColor}
+  .swot .s{background:rgba(91,208,138,.10);border-color:rgba(91,208,138,.35)} .swot .s h4{color:#5bd08a}
+  .swot .w{background:rgba(255,180,90,.10);border-color:rgba(255,180,90,.35)} .swot .w h4{color:#ffb45a}
+  .swot .o{background:rgba(79,208,255,.10);border-color:rgba(79,208,255,.35)} .swot .o h4{color:#4fd0ff}
+  .swot .t{background:rgba(255,95,109,.10);border-color:rgba(255,95,109,.35)} .swot .t h4{color:#ff5f6d}
+  .quizbar{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:rgba(10,15,38,.92);backdrop-filter:blur(6px);padding:9px 11px;border-radius:10px;border:1px solid rgba(120,140,220,.2);margin-bottom:12px}
+  .qtimer{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;color:var(--gold);font-size:16px}
+  #qtime.low{color:var(--outlier)}
+  .qprog{color:var(--dim);font-size:13px}
+  .qbtns{display:flex;gap:8px;flex-wrap:wrap}
+  .qbtns button{padding:8px 14px;font-size:13px}
+  .qresult{opacity:0;height:0;overflow:hidden;transition:opacity .4s;text-align:center;font-family:"Fraunces",serif;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0}
+  .qresult.on{opacity:1;height:auto;margin:2px 0 12px}
+  .qresult b{color:var(--gold)}
+  .qlist{display:flex;flex-direction:column;gap:14px;padding-bottom:8px}
+  .qcard{background:rgba(120,140,220,.05);border:1px solid rgba(120,140,220,.14);border-radius:10px;padding:12px 14px}
+  .qq{font-weight:600;color:var(--ink);font-size:14.5px;margin-bottom:9px;line-height:1.4}
+  .qq .qn{color:var(--dim);margin-right:8px}
+  .qopts{display:grid;gap:7px}
+  .qopt{display:flex;align-items:center;gap:9px;text-align:left;background:rgba(255,255,255,.03);border:1px solid rgba(120,140,220,.16);color:var(--ink);font-family:"Inter";font-weight:500;font-size:13.5px;padding:8px 11px;border-radius:8px;cursor:pointer;transition:background .12s,border-color .12s}
+  .qopt:hover{background:rgba(255,255,255,.08)}
+  .qopt .mk{width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(140,160,230,.5);flex:0 0 auto;display:grid;place-items:center;font-size:11px;font-weight:600}
+  .qopt.sel{border-color:var(--cool);background:rgba(79,208,255,.12)}
+  .qopt.sel .mk{border-color:var(--cool);background:var(--cool);color:#08121f}
+  .qopt.correct{border-color:#5bd08a;background:rgba(91,208,138,.14)}
+  .qopt.correct .mk{border-color:#5bd08a;background:#5bd08a;color:#08121f}
+  .qopt.wrong{border-color:var(--outlier);background:rgba(255,95,109,.12)}
+  .qopt.wrong .mk{border-color:var(--outlier);background:var(--outlier);color:#08121f}
+
+  /* ---- types illustration text ---- */
+  .tbig{font-family:"Fraunces",serif;font-weight:600;fill:var(--ink)}
+  .texa{font-family:"Inter";fill:var(--dim);font-size:16px}
+  .tnote{font-family:"Inter";fill:#7f8ab6;font-size:14px}
+  .tlbl{font-family:"Inter";fill:var(--ink);font-size:15px;font-weight:600}
+  .tkey{font-family:"Fraunces",serif;fill:var(--gold);font-weight:600;font-size:24px}
+
+  #points{transition:opacity .8s}
+  .pt{transition:transform 1.15s cubic-bezier(.16,1,.3,1)}
+  .pt .dot{transition:fill .8s, r .6s, filter .8s, opacity .6s}
+  .drift{animation:none}
+  body.drifton .drift{animation:float 7s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:translate(0,0)}25%{transform:translate(3px,-4px)}50%{transform:translate(-2px,3px)}75%{transform:translate(2px,2px)}}
+
+  .layer{opacity:0;transition:opacity .8s ease}
+  .measure line{stroke-linecap:round}
+  .vline{stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1s ease .1s, opacity .6s}
+  .layer.on .vline{stroke-dashoffset:0}
+  .devline{stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1),opacity .5s}
+  .layer.on .devline{stroke-dashoffset:0}
+  .curve-line{fill:none;stroke:var(--bell);stroke-width:2.5;filter:drop-shadow(0 0 10px rgba(150,170,255,.55));
+    stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.5s ease,opacity .8s}
+  .layer.on .curve-line{stroke-dashoffset:0}
+  .curve-fill{fill:rgba(130,150,255,.10);stroke:none}
+  .arrow{fill:none;stroke:var(--gold);stroke-width:2;stroke-dasharray:6 5;stroke-linecap:round;filter:drop-shadow(0 0 5px rgba(255,203,91,.4))}
+  .tick{stroke:#2a335e;stroke-width:1}
+  .ticktxt{fill:#5a648f;font-size:13px;font-family:"Inter"}
+  .mlabel{font-family:"Inter";font-weight:600;font-size:15px}
+  #curveLabel{fill:var(--bell);font-family:"Inter";font-weight:600;font-size:15px;opacity:0;transition:opacity .8s}
+  #curveLabel.on{opacity:1}
+  .zguide{stroke:var(--cool);stroke-width:1;stroke-dasharray:3 4;opacity:.55}
+  .zlab{fill:#7f8ab6;font-family:"Inter";font-size:12px}
+  .panelCurve{stroke:#6b74a8;fill:none;transition:stroke .4s}
+  .panel.hot .panelCurve{stroke:var(--bell);filter:drop-shadow(0 0 8px rgba(150,170,255,.5))}
+  .panelTitle{fill:#8b96b8;font-family:"Inter";font-weight:600;font-size:14px}
+  .panel.hot .panelTitle{fill:var(--ink)}
+  .panelRule{fill:#6d77a0;font-family:"Inter";font-size:12px}
+  .panel.hot .panelRule{fill:var(--bell)}
+  .outring{stroke:var(--outlier);stroke-width:2;fill:none;stroke-dasharray:5 5;animation:pulsering 2s ease-in-out infinite}
+  @keyframes pulsering{0%,100%{opacity:.45}50%{opacity:1}}
+
+  .formula{position:absolute;top:10px;right:14px;transform:translateY(-14px);z-index:5;text-align:left;
+    opacity:0;pointer-events:none;transition:opacity .8s,transform .8s;background:rgba(10,15,38,.8);border:1px solid rgba(120,140,220,.28);
+    border-radius:14px;padding:15px 19px;backdrop-filter:blur(8px);max-width:min(90vw,410px)}
+  .formula.on{opacity:1;pointer-events:auto;transform:translateY(0)}
+  .formula .eq{font-family:"Fraunces",serif;font-size:clamp(18px,3vw,26px);letter-spacing:.01em}
+  .formula .eq sup{font-size:.62em}
+  .formula .muted{color:var(--dim)}
+  .formula .work{margin-top:9px;font-size:14px;color:var(--dim);line-height:1.5}
+  .formula .work b{color:var(--gold);font-weight:600}
+  .formula .note{margin-top:8px;font-size:13px;color:#6d77a0}
+  .formula .note b{color:var(--outlier)}
+
+  .controls{position:relative;z-index:6;display:flex;align-items:center;justify-content:center;gap:14px;
+    padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px))}
+  button{font-family:"Inter";font-weight:600;font-size:15px;color:var(--ink);cursor:pointer;
+    border:1px solid rgba(140,160,230,.28);background:rgba(255,255,255,.04);padding:10px 20px;border-radius:999px;
+    transition:background .2s,border-color .2s,opacity .2s}
+  button:hover{background:rgba(255,255,255,.1);border-color:rgba(140,160,230,.5)}
+  button:disabled{opacity:.3;cursor:default}
+  button:focus-visible{outline:2px solid var(--cool);outline-offset:2px}
+  .next{background:linear-gradient(180deg,#5b6cff,#3d4bd6);border-color:transparent}
+  .next:hover{background:linear-gradient(180deg,#6b7bff,#4b59e6)}
+  .track{display:flex;gap:5px;align-items:center;margin:0 4px;max-width:46vw;flex-wrap:wrap;justify-content:center}
+  .track i{width:7px;height:7px;border-radius:50%;background:rgba(140,160,230,.28);transition:background .3s,transform .3s}
+  .track i.done{background:rgba(140,160,230,.55)}
+  .track i.cur{background:var(--cool);transform:scale(1.5)}
+  .hint{position:fixed;bottom:calc(70px + env(safe-area-inset-bottom,0px));left:0;right:0;text-align:center;font-size:12px;color:#4b5580;z-index:1;pointer-events:none}
+  @media (max-width:640px){.track{display:none}.hint{display:none}}
+  @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation:none!important}}
+</style>
+</head>
+<body data-step="0">
+  <div class="stars" id="stars"></div>
+
+  <div class="caption swap-in" id="cap">
+    <div class="kicker" id="kicker">01</div>
+    <h1 class="stage-word" id="word">Types of Variables</h1>
+    <p class="stage-sub" id="sub"></p>
+  </div>
+
+  <div class="viz">
+    <div class="panelBox" id="toc"></div>
+    <div class="panelBox" id="bio">
+      <div class="pcol" style="max-width:820px;margin:0 auto">
+        <div style="text-align:center;margin-bottom:6px">
+          <div class="bioname">Dr. Ngoun Sethykun, Ph.D.</div>
+          <div class="biotag">Development Economist · Policy Researcher · Educator · "Sharing is caring!"</div>
+        </div>
+        <div class="fence">Development economist and policy researcher with 10+ years in public-sector administration, economic research and international development — combining quantitative economics with AI-driven tools and programming for research, training and digital development. Has lectured in economics and statistics, coordinated ADB public-policy training, and published on SME finance in Cambodia.</div>
+        <div class="pwrap" style="margin-top:12px">
+          <div class="pcol">
+            <div class="ph">Experience</div>
+            <ul class="psteps">
+              <li><b>Public-Sector Economist</b> — Government of Cambodia (2019–present)</li>
+              <li><b>Research Consultant</b> — enterprise & property surveys (2006–2019)</li>
+              <li><b>Lecturer in Economics</b> — RUPP (2016–2018)</li>
+              <li><b>Assistant Professor</b> — ADB Public Policy Program (2009–2012)</li>
+            </ul>
+            <div class="ph" style="margin-top:10px">Education</div>
+            <ul class="psteps">
+              <li>Ph.D. & M.A. International Development — Nagoya University, Japan</li>
+              <li>B.Ed. TEFL · B.Econ. — Cambodia</li>
+            </ul>
+          </div>
+          <div class="pcol">
+            <div class="ph">Expertise</div>
+            <div class="fence" style="font-size:13px">Development economics · Econometrics · SME finance · Tax arrear management · Quantitative methods · Python (incl. Python in Excel) · Data analysis & visualization · Khmer language tech · AI & digital tools</div>
+            <div class="ph" style="margin-top:10px">Selected research</div>
+            <ul class="psteps">
+              <li>Sources of finance of SMEs in Cambodia — Ph.D. dissertation (2012)</li>
+              <li>Impacts of formal & informal loans on SME performance (2012)</li>
+            </ul>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:14px">
+          <a class="biolink" href="https://sethykunrupp-png.github.io/drngounsethykunbio/" target="_blank" rel="noopener">Full bio & portfolio ↗</a>
+        </div>
+        <div class="fence" style="margin-top:12px;text-align:center">Phnom Penh, Cambodia · sethykun@gmail.com · +855 89 555 179<br><span style="color:#6d77a0">Sharing is caring! · In loving memory of Daddy Hun Net.</span></div>
+      </div>
+    </div>
+    <div class="panelBox" id="quiz">
+      <div class="quizbar">
+        <div class="qtimer">⏱ <span id="qtime">10:00</span></div>
+        <div class="qprog"><span id="qans">0</span> / 20 answered</div>
+        <div class="qbtns">
+          <button id="qShow">Show correct answers</button>
+          <button id="qScore" class="next">See my score</button>
+          <button id="qReset">Reset</button>
+        </div>
+      </div>
+      <div id="qresult" class="qresult"></div>
+      <div id="qlist" class="qlist"></div>
+    </div>
+    <div class="typesTable" id="typesTable">
+      <div class="tblScroll">
+        <table class="vt">
+          <thead><tr>
+            <th>Main Type</th><th>Variable / Level</th><th>Data Type</th><th>Definition</th>
+            <th>Key Feature</th><th>Example</th><th>True Zero?</th><th>Remember</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="cat">Categorical</td><td>Nominal</td><td><b>Qualitative</b></td><td>Categories or labels with no natural order</td><td>No ranking / order</td><td>Eye color: brown, blue, green</td><td class="na">N/A</td><td><b>NAME</b></td></tr>
+            <tr><td class="cat">Categorical</td><td>Ordinal</td><td><b>Qualitative</b></td><td>Categories with a meaningful order or rank</td><td>Order matters; gaps not necessarily equal</td><td>Satisfaction: poor → fair → good → excellent</td><td class="na">N/A</td><td><b>ORDER</b></td></tr>
+            <tr><td class="num">Numerical</td><td>Discrete</td><td><b>Quantitative</b></td><td>Numbers that are counted, usually whole numbers</td><td>Countable values</td><td>Number of siblings: 0, 1, 2, 3…</td><td><b>Usually yes*</b></td><td><b>COUNT</b></td></tr>
+            <tr><td class="num">Numerical</td><td>Continuous</td><td><b>Quantitative</b></td><td>Numbers that are measured and can include decimals</td><td>Measured values</td><td>Height: 160.2 cm, 160.25 cm…</td><td><b>Depends*</b></td><td><b>MEASURE</b></td></tr>
+            <tr><td class="num">Numerical</td><td>Interval</td><td><b>Quantitative</b></td><td>Ordered numerical scale with equal intervals but no true zero</td><td>Differences meaningful; ratios not</td><td>Temperature °C: 10°, 20°, 30°</td><td class="no">✗ No</td><td><b>EQUAL GAPS</b></td></tr>
+            <tr><td class="num">Numerical</td><td>Ratio</td><td><b>Quantitative</b></td><td>Ordered numerical scale with equal intervals and a true zero</td><td>Differences AND ratios meaningful</td><td>Weight: 0, 30, 60 kg</td><td class="yes">✓ Yes</td><td><b>TRUE ZERO</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tblFoot">
+        <b>QUALITATIVE</b> = Categorical (Nominal + Ordinal) &nbsp;|&nbsp; <b>QUANTITATIVE</b> = Numerical (Discrete + Continuous; Interval + Ratio)<br>
+        ⭐ Quick memory: NAME → ORDER → COUNT → MEASURE → EQUAL GAPS → TRUE ZERO
+      </div>
+    </div>
+
+    <div class="panelBox" id="iqrDetail"></div>
+    <div class="panelBox" id="iqrCode"></div>
+    <div class="panelBox" id="orgCat"></div>
+    <div class="panelBox" id="orgNum"></div>
+    <div class="panelBox" id="orgMulti"></div>
+    <div class="panelBox" id="ctable">
+      <div class="pcol" style="max-width:720px;margin:0 auto">
+        <div class="ph">Contingency table — "Prefer online shopping?" by age (n = 300)</div>
+        <div class="fence">A contingency (cross-tab) table counts how two categorical variables occur together. Each inner cell is a joint count; the final row and column are the margins (totals).</div>
+        <table class="kv" style="margin-top:12px">
+          <tr><th>Age group</th><th>Yes</th><th>No</th><th>Total</th><th>% Yes</th></tr>
+          <tr><td>Under 30</td><td>80</td><td>20</td><td>100</td><td>80%</td></tr>
+          <tr><td>30–49</td><td>55</td><td>45</td><td>100</td><td>55%</td></tr>
+          <tr><td>50 +</td><td>30</td><td>70</td><td>100</td><td>30%</td></tr>
+          <tr><td>Total</td><td>165</td><td>135</td><td>300</td><td>55%</td></tr>
+        </table>
+        <div class="fence" style="margin-top:10px">Reading down the % column, preference falls sharply with age (80% → 55% → 30%) — the two variables look <b>associated</b>. A χ² test (see Hypothesis Testing) checks whether that pattern is beyond chance.</div>
+        <div class="fence" style="margin-top:8px">Build it: Excel <b>PivotTable</b> · Stata <span class="icode">tabulate age pref, row</span> · SPSS <b>CROSSTABS</b> · R <span class="icode">table(age, pref)</span></div>
+      </div>
+    </div>
+    <div class="panelBox" id="xlCat"></div>
+    <div class="panelBox" id="xlNum"></div>
+    <div class="panelBox" id="xlTwo"></div>
+    <div class="panelBox" id="staReg"></div>
+    <div class="panelBox" id="nvn1"></div>
+    <div class="panelBox" id="sdse"></div>
+    <div class="panelBox" id="csvSurvey"></div>
+    <div class="panelBox" id="csvRaw"></div>
+    <div class="panelBox" id="csvFreq"></div>
+    <div class="panelBox" id="csvStats"></div>
+    <div class="panelBox" id="csvInterp"></div>
+    <div class="panelBox" id="povIntro"></div>
+    <div class="panelBox" id="povRaw"></div>
+    <div class="panelBox" id="povStats"></div>
+    <div class="panelBox" id="povInterp"></div>
+    <div class="panelBox" id="htIntro"></div>
+    <div class="panelBox" id="htHow"></div>
+    <div class="panelBox" id="mfIntro"></div>
+    <div class="panelBox" id="mfRaw"></div>
+    <div class="panelBox" id="mfStats"></div>
+    <div class="panelBox" id="mfInterp"></div>
+    <div class="panelBox" id="hIntro"></div>
+    <div class="panelBox" id="hRaw"></div>
+    <div class="panelBox" id="hAnova"></div>
+    <div class="panelBox" id="hInterp"></div>
+    <div class="panelBox" id="chDesc"></div>
+    <div class="panelBox" id="chChart"></div>
+    <div class="panelBox" id="chOut"></div>
+    <div class="panelBox" id="chReg"></div>
+    <div class="panelBox" id="chTest"></div>
+    <div class="panelBox" id="ctIntro"></div>
+    <div class="panelBox" id="ctData"></div>
+    <div class="panelBox" id="ctMatrix"></div>
+    <div class="panelBox" id="ctInterp"></div>
+    <div class="panelBox" id="swotKh"></div>
+    <div class="panelBox" id="swotTh"></div>
+    <div class="panelBox" id="ide">
+      <div class="ide">
+        <div class="pane">
+          <div class="plab"><span>Data — paste from Excel (Ctrl / ⌘ + V)</span><button id="pyRun" class="next">▶ Run</button></div>
+          <textarea id="pyData" spellcheck="false">Region,Sales,Units
+North,1200,80
+South,900,60
+East,1500,95
+West,1100,70
+</textarea>
+          <div class="plab" style="margin-top:8px"><span>Python code — table is <code>df</code>; columns (e.g. <code>Sales</code>) are variables; <code>np</code> <code>pd</code> <code>plt</code> ready</span></div>
+          <textarea id="pyCode" spellcheck="false"># 'df' is a pandas DataFrame built from the table above.
+print(df)
+print()
+print(df.describe())
+
+import matplotlib.pyplot as plt
+df.plot(kind="bar", x="Region", y="Sales", legend=False, color="#1f77b4")
+plt.title("Sales by Region")
+plt.tight_layout()
+plt.show()
+</textarea>
+        </div>
+        <div class="pane">
+          <div class="plab"><span>Output</span><span id="pyStatus" class="status"></span></div>
+          <div class="out"><pre id="pyOut">Press ▶ Run to execute. The first run loads the Python runtime (needs internet). numpy and matplotlib are ready to use.</pre><div id="pyImg"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <svg viewBox="0 0 1000 560" id="svg" aria-hidden="true">
+      <defs>
+        <marker id="arrowhead" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--gold)"/></marker>
+        <marker id="thead" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--dim)"/></marker>
+      </defs>
+      <g class="layer" id="typesViz"></g>
+      <g class="layer" id="visCat"></g>
+      <g class="layer" id="visNum"></g>
+      <g class="layer" id="visTwo"></g>
+      <g class="layer" id="corrViz"></g>
+      <g class="layer" id="regViz"></g>
+      <g class="layer" id="whyViz"></g>
+      <g class="layer" id="csvChart"></g>
+      <g class="layer" id="povCat"></g>
+      <g class="layer" id="povNum"></g>
+      <g class="layer" id="povRel"></g>
+      <g class="layer" id="zTest"></g>
+      <g class="layer" id="tTest"></g>
+      <g class="layer" id="chiTest"></g>
+      <g class="layer" id="fTest"></g>
+      <g class="layer" id="mfBar"></g>
+      <g class="layer" id="mfTest"></g>
+      <g class="layer" id="hBar"></g>
+      <g class="layer" id="hF"></g>
+      <g class="layer" id="ctBar"></g>
+      <g class="layer" id="axis"><line x1="80" y1="460" x2="920" y2="460" class="tick"/></g>
+
+      <g class="layer" id="curveL">
+        <path class="curve-fill" id="curveFill"/><path class="curve-line" id="curvePath" pathLength="1"/>
+        <text id="curveLabel" text-anchor="middle">≈ Normal distribution</text>
+      </g>
+      <g class="layer" id="shapeL"></g>
+
+      <g class="layer measure" id="rangeL">
+        <line id="rangeLine" y1="502" y2="502" stroke="var(--warm)" stroke-width="2.5"/>
+        <path id="rangeA1" fill="var(--warm)"/><path id="rangeA2" fill="var(--warm)"/>
+        <text id="rangeTxt" y="534" text-anchor="middle" class="mlabel" fill="var(--warm)"></text>
+      </g>
+      <g class="layer measure" id="cvL">
+        <line id="cvSpan" y1="352" y2="352" stroke="var(--teal)" stroke-width="2.5"/>
+        <path id="cvA1" fill="var(--teal)"/><path id="cvA2" fill="var(--teal)"/>
+        <text id="cvTxt" y="340" text-anchor="middle" class="mlabel" fill="var(--teal)"></text>
+      </g>
+      <g class="layer measure" id="zL">
+        <g id="zGuides"></g>
+        <line id="zBr" y1="332" y2="332" stroke="var(--outlier)" stroke-width="2.5"/>
+        <path id="zBrA1" fill="var(--outlier)"/><path id="zBrA2" fill="var(--outlier)"/>
+        <text id="zBrTxt" y="322" text-anchor="middle" class="mlabel" fill="var(--outlier)"></text>
+      </g>
+      <g class="layer measure" id="iqrL"></g>
+      <g class="layer measure" id="zthrL"></g>
+      <g class="layer measure" id="madL"></g>
+      <g class="layer measure" id="devL"></g>
+
+      <g class="layer measure" id="meanL">
+        <line class="vline" id="meanLine" y1="470" y2="300" stroke="var(--gold)" stroke-width="2.5" pathLength="1"/>
+        <text id="meanTxt" y="288" text-anchor="middle" class="mlabel" fill="var(--gold)"></text>
+      </g>
+      <g class="layer measure" id="medianL">
+        <line class="vline" id="medianLine" y1="470" y2="300" stroke="var(--teal)" stroke-width="2.5" pathLength="1"/>
+        <text id="medianTxt" y="262" text-anchor="middle" class="mlabel" fill="var(--teal)"></text>
+      </g>
+      <g class="layer measure" id="modeL"><text id="modeTxt" text-anchor="middle" class="mlabel" fill="var(--mag)"></text></g>
+
+      <g id="points"></g>
+      <g class="layer measure" id="outRingL"><circle id="outRing" class="outring" r="20"/></g>
+      <g class="layer" id="arrowL"><path class="arrow" id="arrowPath" marker-end="url(#arrowhead)"/></g>
+    </svg>
+
+    <div class="formula" id="formula"></div>
+  </div>
+
+  <div class="hint">press → or space to advance · ← to go back</div>
+  <div class="controls">
+    <button id="menu" aria-label="Contents">☰</button>
+    <button id="back">← Back</button>
+    <div class="track" id="track"></div>
+    <button class="next" id="next">Next →</button>
+  </div>
+
+<script>
+(function(){
+  const SVGNS='http://www.w3.org/2000/svg';
+  const mk=(t,a,txt)=>{const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;return e;};
+
+  // ---------- data ----------
+  const SPEC=[[4,1],[5,2],[6,4],[7,6],[8,8],[9,6],[10,4],[11,2],[12,1],[22,1]];
+  const OUT=22, BASE=460, R=8, GAP=17;
+  const vx=v=>80+(v/24)*840;
+  const DATA=[]; SPEC.forEach(([v,c])=>{for(let s=0;s<c;s++)DATA.push({v,s,outlier:v===OUT});});
+  const vals=DATA.map(d=>d.v), n=vals.length;
+  const mean=vals.reduce((a,b)=>a+b,0)/n;
+  const sorted=[...vals].sort((a,b)=>a-b);
+  const med=a=>a.length%2?a[(a.length-1)/2]:(a[a.length/2-1]+a[a.length/2])/2;
+  const median=med(sorted);
+  const counts={}; vals.forEach(v=>counts[v]=(counts[v]||0)+1);
+  let mode=vals[0],mc=0; for(const k in counts){if(counts[k]>mc){mc=counts[k];mode=+k;}}
+  const minV=Math.min(...vals),maxV=Math.max(...vals),range=maxV-minV;
+  const sumsq=vals.reduce((a,v)=>a+(v-mean)**2,0), variance=sumsq/n;
+  const std=Math.sqrt(variance), cv=std/mean*100, zOut=(OUT-mean)/std, outSq=(OUT-mean)**2;
+  // quartiles + IQR
+  const mid=Math.floor(n/2);
+  const Q1=med(sorted.slice(0,mid)), Q3=med(sorted.slice(n%2?mid+1:mid)), IQR=Q3-Q1;
+  const LF=Q1-1.5*IQR, UF=Q3+1.5*IQR;
+  const minWithin=Math.min(...vals.filter(v=>v>=LF)), maxWithin=Math.max(...vals.filter(v=>v<=UF));
+  // MAD
+  const absdev=sorted.map(v=>Math.abs(v-median)).sort((a,b)=>a-b);
+  const MAD=med(absdev), modZ=0.6745*(OUT-median)/MAD;
+  const f=x=>Number.isInteger(x)?String(x):x.toFixed(1);
+
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  const rng=mulberry32(20240607);
+  DATA.forEach(d=>{d.rx=130+rng()*750;d.ry=120+rng()*290;});
+  const settled=d=>({x:vx(d.v),y:BASE-16-d.s*GAP});
+
+  // ---------- points + deviations ----------
+  const gPts=document.getElementById('points'), gDev=document.getElementById('devL');
+  DATA.forEach(d=>{
+    const g=mk('g',{class:'pt',transform:`translate(${d.rx},${d.ry})`});
+    const drift=mk('g',{class:'drift'});
+    const c=mk('circle',{class:'dot',r:R,fill:'var(--cool)',filter:'drop-shadow(0 0 7px rgba(79,208,255,.5))'});
+    drift.appendChild(c);g.appendChild(drift);gPts.appendChild(g);d.el=g;d.dot=c;
+    const st=settled(d);
+    gDev.appendChild(mk('line',{class:'devline',pathLength:1,x1:st.x,y1:st.y,x2:vx(mean),y2:st.y,
+      stroke:d.outlier?'var(--outlier)':(d.v<mean?'var(--cool)':'var(--warm)'),'stroke-width':d.outlier?3.5:1.6}));
+  });
+  const axis=document.getElementById('axis');
+  [0,5,10,15,20].forEach(t=>{const x=vx(t);
+    axis.appendChild(mk('line',{class:'tick',x1:x,x2:x,y1:455,y2:465}));
+    axis.appendChild(mk('text',{class:'ticktxt',x:x,y:484,'text-anchor':'middle'},t));});
+
+  // ---------- normal curve ----------
+  function smooth(p){let d=`M ${p[0].x} ${p[0].y}`;
+    for(let i=0;i<p.length-1;i++){const p0=p[i-1]||p[i],p1=p[i],p2=p[i+1],p3=p[i+2]||p2;
+      d+=` C ${p1.x+(p2.x-p0.x)/6} ${p1.y+(p2.y-p0.y)/6}, ${p2.x-(p3.x-p1.x)/6} ${p2.y-(p3.y-p1.y)/6}, ${p2.x} ${p2.y}`;}return d;}
+  const central=SPEC.filter(([v])=>v!==OUT);
+  const cpts=[{x:vx(central[0][0]-1),y:BASE}];
+  central.forEach(([v,c])=>cpts.push({x:vx(v),y:BASE-16-(c-1)*GAP-9}));
+  cpts.push({x:vx(central[central.length-1][0]+1),y:BASE});
+  const dCurve=smooth(cpts);
+  document.getElementById('curvePath').setAttribute('d',dCurve);
+  document.getElementById('curveFill').setAttribute('d',dCurve+' Z');
+  const peak=cpts.reduce((a,b)=>b.y<a.y?b:a);
+  const cl=document.getElementById('curveLabel'); cl.setAttribute('x',peak.x);cl.setAttribute('y',peak.y-16);
+
+  // ---------- measures setup ----------
+  const setLine=(id,x)=>{const e=document.getElementById(id);e.setAttribute('x1',x);e.setAttribute('x2',x);};
+  setLine('meanLine',vx(mean)); document.getElementById('meanTxt').setAttribute('x',vx(mean));
+  document.getElementById('meanTxt').textContent=`Mean = ${f(mean)}`;
+  setLine('medianLine',vx(median)); document.getElementById('medianTxt').setAttribute('x',vx(median));
+  document.getElementById('medianTxt').textContent=`Median = ${f(median)}`;
+  const modeTxt=document.getElementById('modeTxt'); modeTxt.setAttribute('x',vx(mode));
+  modeTxt.setAttribute('y',BASE-16-(mc-1)*GAP-24); modeTxt.textContent=`Mode = ${f(mode)}`;
+  const rl=document.getElementById('rangeLine'); rl.setAttribute('x1',vx(minV));rl.setAttribute('x2',vx(maxV));
+  document.getElementById('rangeA1').setAttribute('d',`M${vx(minV)},502 l14,-7 l0,14 z`);
+  document.getElementById('rangeA2').setAttribute('d',`M${vx(maxV)},502 l-14,-7 l0,14 z`);
+  const rt=document.getElementById('rangeTxt');rt.setAttribute('x',(vx(minV)+vx(maxV))/2);
+  rt.textContent=`Range = ${maxV} − ${minV} = ${range}`;
+  const sx0=vx(mean),sx1=vx(mean+std);
+  setLine('cvSpan',null); document.getElementById('cvSpan').setAttribute('x1',sx0);document.getElementById('cvSpan').setAttribute('x2',sx1);
+  document.getElementById('cvA1').setAttribute('d',`M${sx0},352 l12,-6 l0,12 z`);
+  document.getElementById('cvA2').setAttribute('d',`M${sx1},352 l-12,-6 l0,12 z`);
+  document.getElementById('cvTxt').setAttribute('x',(sx0+sx1)/2);
+  document.getElementById('cvTxt').textContent=`1σ ≈ ${f(std)}`;
+  const zG=document.getElementById('zGuides');
+  [-2,-1,1,2].forEach(k=>{const x=vx(mean+k*std);if(x<80||x>920)return;
+    zG.appendChild(mk('line',{class:'zguide',x1:x,x2:x,y1:460,y2:300}));
+    zG.appendChild(mk('text',{class:'zlab',x:x,y:294,'text-anchor':'middle'},(k>0?'+':'')+k+'σ'));});
+  zG.appendChild(mk('text',{class:'zlab',x:vx(mean),y:294,'text-anchor':'middle',fill:'var(--gold)'},'0σ'));
+  const zb=document.getElementById('zBr');zb.setAttribute('x1',vx(mean));zb.setAttribute('x2',vx(OUT));
+  document.getElementById('zBrA1').setAttribute('d',`M${vx(mean)},332 l12,-6 l0,12 z`);
+  document.getElementById('zBrA2').setAttribute('d',`M${vx(OUT)},332 l-12,-6 l0,12 z`);
+  document.getElementById('zBrTxt').setAttribute('x',(vx(mean)+vx(OUT))/2);
+  document.getElementById('zBrTxt').textContent=`outlier: z ≈ ${zOut.toFixed(1)}`;
+  const outRing=document.getElementById('outRing'); outRing.setAttribute('cx',vx(OUT));outRing.setAttribute('cy',BASE-16);
+
+  // ---------- IQR boxplot ----------
+  (function(){const g=document.getElementById('iqrL'),by=400,bh=44;
+    const bx0=vx(Q1),bx1=vx(Q3),bmed=vx(median);
+    g.appendChild(mk('line',{x1:vx(minWithin),y1:by,x2:bx0,y2:by,stroke:'var(--cool)','stroke-width':2}));
+    g.appendChild(mk('line',{x1:bx1,y1:by,x2:vx(maxWithin),y2:by,stroke:'var(--cool)','stroke-width':2}));
+    g.appendChild(mk('line',{x1:vx(minWithin),y1:by-10,x2:vx(minWithin),y2:by+10,stroke:'var(--cool)','stroke-width':2}));
+    g.appendChild(mk('line',{x1:vx(maxWithin),y1:by-10,x2:vx(maxWithin),y2:by+10,stroke:'var(--cool)','stroke-width':2}));
+    g.appendChild(mk('rect',{x:bx0,y:by-bh/2,width:bx1-bx0,height:bh,rx:4,fill:'rgba(79,208,255,.12)',stroke:'var(--cool)','stroke-width':2}));
+    g.appendChild(mk('line',{x1:bmed,y1:by-bh/2,x2:bmed,y2:by+bh/2,stroke:'var(--teal)','stroke-width':2.5}));
+    g.appendChild(mk('text',{class:'zlab',x:bx0,y:by+bh/2+18,'text-anchor':'middle',fill:'var(--cool)'},`Q1=${f(Q1)}`));
+    g.appendChild(mk('text',{class:'zlab',x:bx1,y:by+bh/2+18,'text-anchor':'middle',fill:'var(--cool)'},`Q3=${f(Q3)}`));
+    // upper fence
+    g.appendChild(mk('line',{x1:vx(UF),y1:340,x2:vx(UF),y2:462,stroke:'var(--outlier)','stroke-width':1.6,'stroke-dasharray':'5 4'}));
+    g.appendChild(mk('text',{class:'zlab',x:vx(UF),y:332,'text-anchor':'middle',fill:'var(--outlier)'},`Q3+1.5·IQR = ${f(UF)}`));
+    g.appendChild(mk('text',{class:'zlab',x:(vx(UF)+vx(OUT))/2,y:by-30,'text-anchor':'middle',fill:'var(--outlier)'},'beyond the fence → outlier'));
+  })();
+
+  // ---------- Z threshold ----------
+  (function(){const g=document.getElementById('zthrL'),x=vx(mean+3*std);
+    g.appendChild(mk('line',{x1:x,y1:300,x2:x,y2:462,stroke:'var(--outlier)','stroke-width':1.6,'stroke-dasharray':'5 4'}));
+    g.appendChild(mk('text',{class:'zlab',x:x,y:292,'text-anchor':'middle',fill:'var(--outlier)'},'+3σ  (|z| = 3)'));
+    g.appendChild(mk('line',{x1:vx(mean),y1:360,x2:x,y2:360,stroke:'var(--dim)','stroke-width':1.4}));
+    g.appendChild(mk('text',{class:'zlab',x:(vx(mean)+x)/2,y:352,'text-anchor':'middle'},'within 3σ = normal'));
+  })();
+
+  // ---------- MAD ----------
+  (function(){const g=document.getElementById('madL'),mmx=vx(median),y=380;
+    g.appendChild(mk('line',{x1:mmx,y1:300,x2:mmx,y2:462,stroke:'var(--teal)','stroke-width':2,'stroke-dasharray':'4 3'}));
+    g.appendChild(mk('text',{class:'zlab',x:mmx,y:292,'text-anchor':'middle',fill:'var(--teal)'},`median = ${f(median)}`));
+    const mx1=vx(median+MAD);
+    g.appendChild(mk('line',{x1:mmx,y1:y,x2:mx1,y2:y,stroke:'var(--teal)','stroke-width':2.5}));
+    g.appendChild(mk('path',{d:`M${mx1},${y} l-10,-5 l0,10 z`,fill:'var(--teal)'}));
+    g.appendChild(mk('text',{class:'zlab',x:(mmx+mx1)/2,y:y-10,'text-anchor':'middle',fill:'var(--teal)'},`MAD = ${f(MAD)}`));
+    g.appendChild(mk('text',{class:'zlab',x:vx(OUT),y:412,'text-anchor':'middle',fill:'var(--outlier)'},`M ≈ ${modZ.toFixed(1)}`));
+  })();
+
+  // ---------- IQR detail + software panels ----------
+  const P1=0.25*(n+1),P2=0.5*(n+1),P3=0.75*(n+1);
+  document.getElementById('iqrDetail').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Sorted data &nbsp;(n = ${n})</div>
+        <div class="pdata">${sorted.join(', ')}</div>
+        <div class="ph">Find each quartile &middot; position of Q<sub>k</sub> = (k&frasl;4)(n+1)</div>
+        <ul class="psteps">
+          <li>Q1 &rarr; 0.25 &times; ${n+1} = ${P1}th value = <b style="color:var(--gold)">${f(Q1)}</b></li>
+          <li>Q2 &rarr; 0.50 &times; ${n+1} = ${P2}th value = <b style="color:var(--gold)">${f(median)}</b> (median)</li>
+          <li>Q3 &rarr; 0.75 &times; ${n+1} = ${P3}th value = <b style="color:var(--gold)">${f(Q3)}</b></li>
+          <li>If a position isn't a whole number, interpolate between its two neighbours.</li>
+        </ul>
+      </div>
+      <div class="pcol">
+        <table class="kv">
+          <tr><th>Stat</th><th>Meaning</th><th>Value</th></tr>
+          <tr><td>Q0</td><td>Minimum</td><td>${f(minV)}</td></tr>
+          <tr><td>Q1</td><td>25th percentile</td><td>${f(Q1)}</td></tr>
+          <tr><td>Q2</td><td>Median (50th)</td><td>${f(median)}</td></tr>
+          <tr><td>Q3</td><td>75th percentile</td><td>${f(Q3)}</td></tr>
+          <tr><td>Q4</td><td>Maximum</td><td>${f(maxV)}</td></tr>
+        </table>
+        <div class="fence">
+          IQR = Q3 &minus; Q1 = ${f(Q3)} &minus; ${f(Q1)} = <b>${f(IQR)}</b><br>
+          Lower fence = Q1 &minus; 1.5&middot;IQR = <b>${f(LF)}</b><br>
+          Upper fence = Q3 + 1.5&middot;IQR = <b>${f(UF)}</b><br>
+          <span class="flag">${OUT} &gt; ${f(UF)} &rarr; outlier</span>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('iqrCode').innerHTML=`
+    <div class="codeGrid">
+      <div class="codeCard"><div class="ct">Excel</div><pre class="code"><span class="cm">' values in A2:A100000</span>
+Q1  =QUARTILE.INC(A:A,1)
+Q3  =QUARTILE.INC(A:A,3)
+IQR =QUARTILE.INC(A:A,3)-QUARTILE.INC(A:A,1)
+Lo  =Q1-1.5*IQR     Up =Q3+1.5*IQR
+<span class="cm">' flag each row in B2, fill down:</span>
+=IF(OR(A2&lt;Lo,A2&gt;Up),"outlier","")</pre></div>
+      <div class="codeCard"><div class="ct">Stata</div><pre class="code"><span class="cm">* summary incl. p25 / p75</span>
+summarize x, detail
+egen q1 = pctile(x), p(25)
+egen q3 = pctile(x), p(75)
+gen iqr = q3 - q1
+gen outlier = x&lt;q1-1.5*iqr | x&gt;q3+1.5*iqr
+list x if outlier
+<span class="cm">* or just:</span> graph box x</pre></div>
+      <div class="codeCard"><div class="ct">Python &middot; pandas</div><pre class="code">q1, q3 = df["x"].quantile([.25, .75])
+iqr = q3 - q1
+lo, hi = q1 - 1.5*iqr, q3 + 1.5*iqr
+out = df[(df["x"]&lt;lo) | (df["x"]&gt;hi)]</pre></div>
+      <div class="codeCard"><div class="ct">R</div><pre class="code">Q   &lt;- quantile(x, c(.25, .75))
+iqr &lt;- IQR(x)
+out &lt;- x[x&lt;Q[1]-1.5*iqr | x&gt;Q[2]+1.5*iqr]
+boxplot.stats(x)$out   <span class="cm"># same list</span></pre></div>
+      <div class="codeCard"><div class="ct">AI prompt</div><pre class="code">Here is a column of numbers:
+[ paste all values ].
+Using the IQR rule &mdash; Q1 &minus; 1.5&middot;IQR and
+Q3 + 1.5&middot;IQR &mdash; report Q1, Q3, IQR and
+both fences, then list every value
+outside them as an outlier.</pre></div>
+    </div>`;
+
+  // ---------- type illustrations ----------
+  function drawType(id){
+    const H=document.getElementById('typesViz'); H.innerHTML='';
+    const add=(t,a,txt)=>H.appendChild(mk(t,a,txt));
+    const dot=(x,y,col,r)=>add('circle',{cx:x,cy:y,r:r||7,fill:col,filter:`drop-shadow(0 0 6px ${col})`});
+    const line=(x1,y1,x2,y2,col,w,dash)=>add('line',{x1,y1,x2,y2,stroke:col||'#3a4570','stroke-width':w||2,...(dash?{'stroke-dasharray':dash}:{}),'stroke-linecap':'round'});
+    add('text',{class:'texa',x:500,y:150,'text-anchor':'middle'},{
+      nominal:'Eye color: brown, blue, green', ordinal:'Satisfaction: poor → fair → good → excellent',
+      discrete:'Number of siblings: 0, 1, 2, 3…', continuous:'Height: 160.2 cm, 160.25 cm…',
+      interval:'Temperature °C: 10°, 20°, 30°', ratio:'Weight: 0, 30, 60 kg'}[id]);
+    if(id==='nominal'){
+      const cx=[260,500,740], cols=['#c78a5a','#4fd0ff','#5bd08a'], nm=['brown','blue','green'];
+      const off=[[-18,-10],[14,-16],[22,8],[-14,16],[2,-2],[-4,22]];
+      cx.forEach((x,i)=>{off.forEach(o=>dot(x+o[0],280+o[1],cols[i],7)); add('text',{class:'tlbl',x:x,y:358,'text-anchor':'middle'},nm[i]);});
+      add('text',{class:'tnote',x:500,y:398,'text-anchor':'middle'},'Just names — you can group them, not rank them');
+      add('text',{class:'tkey',x:500,y:438,'text-anchor':'middle'},'Remember: NAME');
+    } else if(id==='ordinal'){
+      line(150,330,860,330,'#6b74a8',2); add('path',{d:'M860,330 l-14,-6 l0,12 z',fill:'#6b74a8'});
+      const xs=[230,380,610,830], nm=['poor','fair','good','excellent'];
+      xs.forEach((x,i)=>{dot(x,330,'var(--cool)',9); add('text',{class:'tlbl',x:x,y:312,'text-anchor':'middle'},nm[i]);});
+      add('text',{class:'tnote',x:500,y:392,'text-anchor':'middle'},'Order matters — but the gaps need not be equal');
+      add('text',{class:'tkey',x:500,y:438,'text-anchor':'middle'},'Remember: ORDER');
+    } else if(id==='discrete'){
+      const X=i=>150+i*120; line(120,382,880,382,'#3a4570',1.4);
+      const cnt=[3,5,4,2,1,0,0];
+      cnt.forEach((c,i)=>{ line(X(i),378,X(i),386,'#5a648f',1);
+        add('text',{class:'ticktxt',x:X(i),y:404,'text-anchor':'middle'},i);
+        for(let s=0;s<c;s++) dot(X(i),368-s*17,'var(--cool)',6);});
+      add('text',{class:'tnote',x:500,y:436,'text-anchor':'middle'},'Only whole numbers — nothing in between');
+      add('text',{class:'tkey',x:820,y:210,'text-anchor':'middle'},'COUNT');
+    } else if(id==='continuous'){
+      line(120,360,880,360,'#3a4570',1.4);
+      [[200,'160'],[500,'161'],[800,'162']].forEach(t=>{line(t[0],354,t[0],366,'#5a648f',1.4);
+        add('text',{class:'ticktxt',x:t[0],y:384,'text-anchor':'middle'},t[1]);});
+      for(let x=200;x<=800;x+=30) line(x,357,x,363,'#2a335e',1);
+      [260,275,380,470,590,725].forEach(x=>dot(x,360,'var(--teal)',6));
+      add('text',{class:'tnote',x:500,y:428,'text-anchor':'middle'},'Any value in between is possible — even 160.25');
+      add('text',{class:'tkey',x:820,y:210,'text-anchor':'middle'},'MEASURE');
+    } else if(id==='interval'){
+      line(120,360,880,360,'#3a4570',1.4);
+      const xs=[[160,'−10'],[320,'0'],[480,'10'],[640,'20'],[800,'30']];
+      xs.forEach(t=>{line(t[0],354,t[0],366,'#5a648f',1.4); add('text',{class:'ticktxt',x:t[0],y:384,'text-anchor':'middle'},t[1]);});
+      dot(320,360,'var(--gold)',7); add('text',{class:'tnote',x:320,y:410,'text-anchor':'middle',fill:'var(--gold)'},'0° is arbitrary');
+      line(480,320,640,320,'var(--teal)',2); add('text',{class:'tlbl',x:560,y:308,'text-anchor':'middle',fill:'var(--teal)'},'diff 10° ✓');
+      add('text',{class:'tnote',x:560,y:436,'text-anchor':'middle'},'…but 20° is NOT twice as hot as 10°  ✗');
+      add('text',{class:'tkey',x:820,y:216,'text-anchor':'middle'},'EQUAL GAPS');
+    } else if(id==='ratio'){
+      line(180,360,860,360,'#3a4570',1.4);
+      const xs=[[200,'0'],[480,'30'],[760,'60']];
+      xs.forEach(t=>{line(t[0],354,t[0],366,'#5a648f',1.4); add('text',{class:'ticktxt',x:t[0],y:384,'text-anchor':'middle'},t[1]);});
+      dot(200,360,'var(--gold)',7); add('text',{class:'tnote',x:200,y:410,'text-anchor':'middle',fill:'var(--gold)'},'0 = none (true zero)');
+      line(200,322,480,322,'var(--teal)',2); line(200,300,760,300,'var(--teal)',2);
+      add('text',{class:'tlbl',x:640,y:290,'text-anchor':'middle',fill:'var(--teal)'},'60 = 2 × 30 ✓');
+      add('text',{class:'tnote',x:520,y:436,'text-anchor':'middle'},'Differences AND ratios are meaningful');
+      add('text',{class:'tkey',x:820,y:224,'text-anchor':'middle'},'TRUE ZERO');
+    }
+  }
+
+  // ---------- organizing panels + visual small-multiples ----------
+  document.getElementById('orgCat').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Summary table — favorite drink (n = 100)</div>
+        <table class="kv"><tr><th>Category</th><th>Frequency</th><th>%</th></tr>
+          <tr><td>Coffee</td><td>40</td><td>40%</td></tr><tr><td>Tea</td><td>25</td><td>25%</td></tr>
+          <tr><td>Juice</td><td>20</td><td>20%</td></tr><tr><td>Water</td><td>15</td><td>15%</td></tr>
+          <tr><td>Total</td><td>100</td><td>100%</td></tr></table>
+      </div>
+      <div class="pcol">
+        <div class="ph">Contingency table — drink × gender</div>
+        <table class="kv"><tr><th>Drink</th><th>Male</th><th>Female</th><th>Total</th></tr>
+          <tr><td>Coffee</td><td>22</td><td>18</td><td>40</td></tr><tr><td>Tea</td><td>10</td><td>15</td><td>25</td></tr>
+          <tr><td>Juice</td><td>8</td><td>12</td><td>20</td></tr><tr><td>Water</td><td>9</td><td>6</td><td>15</td></tr>
+          <tr><td>Total</td><td>49</td><td>51</td><td>100</td></tr></table>
+      </div>
+    </div>`;
+  document.getElementById('orgNum').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="fence" style="margin:8px 0 12px"><b>Unstacked</b>: each group in its own column. &nbsp;<b>Stacked</b>: one value column + one group-label column.</div>
+        <div class="ph">Ordered array (sorted, n = 25)</div>
+        <div class="pdata">52, 58, 61, 63, 65, 67, 69, 70, 72, 74, 75, 76, 77, 78, 79, 79, 81, 83, 84, 86, 88, 89, 90, 94, 97</div>
+      </div>
+      <div class="pcol">
+        <div class="ph">Frequency distribution</div>
+        <table class="kv"><tr><th>Class</th><th>Freq</th><th>Rel.</th><th>%</th><th>Cum. %</th></tr>
+          <tr><td>50–59</td><td>2</td><td>0.08</td><td>8%</td><td>8%</td></tr>
+          <tr><td>60–69</td><td>5</td><td>0.20</td><td>20%</td><td>28%</td></tr>
+          <tr><td>70–79</td><td>9</td><td>0.36</td><td>36%</td><td>64%</td></tr>
+          <tr><td>80–89</td><td>6</td><td>0.24</td><td>24%</td><td>88%</td></tr>
+          <tr><td>90–99</td><td>3</td><td>0.12</td><td>12%</td><td>100%</td></tr>
+          <tr><td>Total</td><td>25</td><td>1.00</td><td>100%</td><td>—</td></tr></table>
+      </div>
+    </div>`;
+  document.getElementById('orgMulti').innerHTML=`
+    <div class="pcol" style="max-width:660px;margin:0 auto">
+      <div class="ph">Multidimensional (pivot) table — sales by region × segment × product</div>
+      <table class="kv"><tr><th>Region</th><th>Segment</th><th>Prod A</th><th>Prod B</th><th>Total</th></tr>
+        <tr><td>North</td><td>Retail</td><td>120</td><td>80</td><td>200</td></tr>
+        <tr><td>North</td><td>Online</td><td>90</td><td>110</td><td>200</td></tr>
+        <tr><td>South</td><td>Retail</td><td>70</td><td>60</td><td>130</td></tr>
+        <tr><td>South</td><td>Online</td><td>100</td><td>140</td><td>240</td></tr>
+        <tr><td>Total</td><td>—</td><td>380</td><td>390</td><td>770</td></tr></table>
+      <div class="fence" style="margin-top:12px">Cross-classifies three or more variables at once. In Excel this is a <b>PivotTable</b> — drag fields to rows, columns and values to drill down.</div>
+    </div>`;
+
+  const arc=(cx,cy,r,a0,a1)=>{const P=a=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];const[x0,y0]=P(a0),[x1,y1]=P(a1);
+    const lg=a1-a0>Math.PI?1:0;return `M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${lg} 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z`;};
+
+  document.getElementById('xlCat').innerHTML=`
+    <div class="xhead">Sample data in <b>A1:B5</b> — Category | Frequency: Coffee 40, Tea 25, Juice 20, Water 15.</div>
+    <div class="codeGrid">
+      <div class="codeCard"><div class="ct">Bar chart</div><ul class="psteps"><li>Select A1:B5</li><li>Insert ▸ Charts ▸ Clustered Column</li></ul></div>
+      <div class="codeCard"><div class="ct">Pie chart</div><ul class="psteps"><li>Select A1:B5</li><li>Insert ▸ Charts ▸ Pie</li><li>Chart Elements ▸ Data Labels ▸ Percentage</li></ul></div>
+      <div class="codeCard"><div class="ct">Pareto chart</div><ul class="psteps"><li>Select A1:B5</li><li>Insert ▸ Statistic Chart ▸ Pareto</li><li>Bars auto-sort; a cumulative % line is added</li></ul></div>
+      <div class="codeCard"><div class="ct">Side-by-side bar</div><ul class="psteps"><li>Build a Category × Gender count table</li><li>Select the whole table incl. headers</li><li>Insert ▸ Clustered Column — groups sit side by side</li></ul></div>
+    </div>`;
+  document.getElementById('xlNum').innerHTML=`
+    <div class="xhead">Sample scores in <b>A2:A26</b> — or a Class | Frequency table.</div>
+    <div class="codeGrid">
+      <div class="codeCard"><div class="ct">Histogram</div><ul class="psteps"><li>Select the data column</li><li>Insert ▸ Statistic Chart ▸ Histogram</li><li>Right-click axis ▸ Format Axis ▸ set Bin width</li></ul><div class="xtip">Alt: <span class="icode">=FREQUENCY(A2:A26,bins)</span> → column chart, gap width 0</div></div>
+      <div class="codeCard"><div class="ct">Stem-and-leaf</div><ul class="psteps"><li>Not built into Excel</li><li>Stem <span class="icode">=INT(A2/10)</span>, leaf <span class="icode">=MOD(A2,10)</span></li><li>Per stem: <span class="icode">=TEXTJOIN(" ",1,leaves)</span></li></ul></div>
+      <div class="codeCard"><div class="ct">Percentage polygon</div><ul class="psteps"><li>Columns: Midpoint | Percentage</li><li>Insert ▸ Charts ▸ Line with Markers</li></ul></div>
+      <div class="codeCard"><div class="ct">Cumulative % polygon (ogive)</div><ul class="psteps"><li>Columns: Upper boundary | Cumulative %</li><li>Insert ▸ Line with Markers — it rises to 100%</li></ul></div>
+    </div>`;
+  document.getElementById('xlTwo').innerHTML=`
+    <div class="xhead">X in column <b>A</b>, Y in column <b>B</b> — or Period | Value for a time series.</div>
+    <div class="codeGrid">
+      <div class="codeCard"><div class="ct">Scatter plot</div><ul class="psteps"><li>Select the two numeric columns</li><li>Insert ▸ Charts ▸ Scatter (X Y)</li><li>Right-click a point ▸ Add Trendline ▸ Linear</li></ul></div>
+      <div class="codeCard"><div class="ct">Time-series plot</div><ul class="psteps"><li>Column of dates/periods + values</li><li>Insert ▸ Charts ▸ Line</li><li>Format the horizontal axis as Date</li></ul></div>
+    </div>`;
+
+  (function buildViz(){
+    const cats=['Coffee','Tea','Juice','Water'],cval=[40,25,20,15],ccol=['#4fd0ff','#33e6c0','#ffb45a','#ff77d9'];
+    const gc=document.getElementById('visCat'),A=(g,t,a,x)=>g.appendChild(mk(t,a,x));
+    // Bar
+    (function(){const x=90,y=200,w=360,bY=350,mh=140,mx=Math.max(...cval);
+      A(gc,'text',{class:'vtitle',x,y:y-6},'Bar chart'); A(gc,'line',{x1:x,y1:bY,x2:x+w,y2:bY,class:'vaxis'});
+      cats.forEach((c,i)=>{const bw=60,gp=(w-4*bw)/5,bx=x+gp+i*(bw+gp),h=cval[i]/mx*mh;
+        A(gc,'rect',{x:bx,y:bY-h,width:bw,height:h,fill:ccol[i],rx:3,opacity:.9});
+        A(gc,'text',{class:'vsub',x:bx+bw/2,y:bY+16,'text-anchor':'middle'},c);});})();
+    // Pie
+    (function(){const cx=700,cy=278,r=72,tot=cval.reduce((a,b)=>a+b,0);let a=-Math.PI/2;
+      A(gc,'text',{class:'vtitle',x:540,y:194},'Pie chart');
+      cval.forEach((v,i)=>{const a1=a+v/tot*2*Math.PI;A(gc,'path',{d:arc(cx,cy,r,a,a1),fill:ccol[i],opacity:.9,stroke:'#0c1230','stroke-width':1});a=a1;});
+      cats.forEach((c,i)=>{const ly=234+i*22;A(gc,'rect',{x:806,y:ly-9,width:11,height:11,fill:ccol[i],rx:2});A(gc,'text',{class:'vsub',x:823,y:ly},`${c} ${cval[i]}%`);});})();
+    // Pareto
+    (function(){const x=90,y=402,w=360,bY=520,mh=110,mx=Math.max(...cval),tot=cval.reduce((a,b)=>a+b,0);
+      A(gc,'text',{class:'vtitle',x,y:y-2},'Pareto chart'); A(gc,'line',{x1:x,y1:bY,x2:x+w,y2:bY,class:'vaxis'});
+      let cum=0;const pts=[];
+      cats.forEach((c,i)=>{const bw=60,gp=(w-4*bw)/5,bx=x+gp+i*(bw+gp),h=cval[i]/mx*mh;
+        A(gc,'rect',{x:bx,y:bY-h,width:bw,height:h,fill:'#5b6cff',rx:3,opacity:.85});cum+=cval[i];pts.push([bx+bw/2,bY-cum/tot*mh]);
+        A(gc,'text',{class:'vsub',x:bx+bw/2,y:bY+16,'text-anchor':'middle'},c);});
+      A(gc,'polyline',{points:pts.map(p=>p.map(z=>z.toFixed(1)).join(',')).join(' '),fill:'none',stroke:'var(--gold)','stroke-width':2});
+      pts.forEach(p=>A(gc,'circle',{cx:p[0],cy:p[1],r:3,fill:'var(--gold)'}));})();
+    // Side-by-side
+    (function(){const x=530,y=402,w=360,bY=520,mh=110,male=[22,10,8,9],fem=[18,15,12,6],mx=Math.max(...male,...fem);
+      A(gc,'text',{class:'vtitle',x,y:y-2},'Side-by-side bar'); A(gc,'line',{x1:x,y1:bY,x2:x+w,y2:bY,class:'vaxis'});
+      const gw=w/4;cats.forEach((c,i)=>{const gx=x+i*gw+10,bw=(gw-28)/2,hm=male[i]/mx*mh,hf=fem[i]/mx*mh;
+        A(gc,'rect',{x:gx,y:bY-hm,width:bw,height:hm,fill:'#4fd0ff',rx:2});
+        A(gc,'rect',{x:gx+bw+4,y:bY-hf,width:bw,height:hf,fill:'#ff77d9',rx:2});
+        A(gc,'text',{class:'vsub',x:gx+bw+2,y:bY+16,'text-anchor':'middle'},c);});
+      A(gc,'rect',{x:x+w-98,y:y+4,width:10,height:10,fill:'#4fd0ff'});A(gc,'text',{class:'vsub',x:x+w-84,y:y+13},'Male');
+      A(gc,'rect',{x:x+w-42,y:y+4,width:10,height:10,fill:'#ff77d9'});A(gc,'text',{class:'vsub',x:x+w-28,y:y+13},'Female');})();
+
+    // ---- numerical ----
+    const gn=document.getElementById('visNum');
+    const bins=['50s','60s','70s','80s','90s'],freq=[2,5,9,6,3],tot=freq.reduce((a,b)=>a+b,0);
+    const rel=freq.map(f=>f/tot*100);let cm=0;const cump=freq.map(f=>{cm+=f;return cm/tot*100;});
+    (function(){const x=100,y=196;A(gn,'text',{class:'vtitle',x,y:y-6},'Stem-and-leaf');
+      const rows=[['5','2 8'],['6','1 3 5 7 9'],['7','0 2 4 5 6 7 8 9 9'],['8','1 3 4 6 8 9'],['9','0 4 7']];
+      rows.forEach((r,i)=>{const ry=y+20+i*26;
+        A(gn,'text',{x:x+10,y:ry,fill:'var(--gold)','font-family':'ui-monospace,monospace','font-size':14,'font-weight':600},r[0]);
+        A(gn,'line',{x1:x+26,y1:ry-13,x2:x+26,y2:ry+5,stroke:'#3a4570','stroke-width':1});
+        A(gn,'text',{x:x+34,y:ry,fill:'#bcd0f5','font-family':'ui-monospace,monospace','font-size':14,'letter-spacing':'1.5px'},r[1]);});})();
+    (function(){const x=530,y=196,w=360,bY=346,mh=132,mx=Math.max(...freq);
+      A(gn,'text',{class:'vtitle',x,y:y-6},'Histogram'); A(gn,'line',{x1:x,y1:bY,x2:x+w,y2:bY,class:'vaxis'});
+      const bw=w/5;freq.forEach((fr,i)=>{const h=fr/mx*mh;A(gn,'rect',{x:x+i*bw,y:bY-h,width:bw-2,height:h,fill:'var(--cool)',opacity:.8});
+        A(gn,'text',{class:'vsub',x:x+i*bw+bw/2,y:bY+16,'text-anchor':'middle'},bins[i]);});})();
+    (function(){const x=100,y=402,w=360,bY=520,mh=104,mx=Math.max(...rel),px=i=>x+(i+0.5)*(w/5);
+      A(gn,'text',{class:'vtitle',x,y:y-2},'Percentage polygon'); A(gn,'line',{x1:x,y1:bY,x2:x+w,y2:bY,class:'vaxis'});
+      const pts=rel.map((r,i)=>[px(i),bY-r/mx*mh]);
+      A(gn,'polyline',{points:pts.map(p=>p.map(z=>z.toFixed(1)).join(',')).join(' '),fill:'none',stroke:'var(--teal)','stroke-width':2});
+      pts.forEach(p=>A(gn,'circle',{cx:p[0],cy:p[1],r:3,fill:'var(--teal)'}));
+      bins.forEach((b,i)=>A(gn,'text',{class:'vsub',x:px(i),y:bY+16,'text-anchor':'middle'},b));})();
+    (function(){const x=530,y=402,w=360,bY=520,mh=104,st=w/(5+1);
+      A(gn,'text',{class:'vtitle',x,y:y-2},'Cumulative % polygon (ogive)'); A(gn,'line',{x1:x,y1:bY,x2:x+w,y2:bY,class:'vaxis'});
+      const pts=[[x+st*0.5,bY]];cump.forEach((c,i)=>pts.push([x+st*(i+1),bY-c/100*mh]));
+      A(gn,'polyline',{points:pts.map(p=>p.map(z=>z.toFixed(1)).join(',')).join(' '),fill:'none',stroke:'var(--gold)','stroke-width':2});
+      pts.forEach(p=>A(gn,'circle',{cx:p[0],cy:p[1],r:3,fill:'var(--gold)'}));
+      A(gn,'text',{class:'vsub',x:pts[pts.length-1][0],y:pts[pts.length-1][1]-8,'text-anchor':'end'},'100%');})();
+
+    // ---- two numerical ----
+    const gt=document.getElementById('visTwo');
+    (function(){const x=120,y=180,w=360,h=280,bY=y+h;
+      A(gt,'text',{class:'vtitle',x,y:y-10},'Scatter plot');
+      A(gt,'line',{x1:x,y1:bY,x2:x+w,y2:bY,class:'vaxis'});A(gt,'line',{x1:x,y1:y,x2:x,y2:bY,class:'vaxis'});
+      const P=[[1,2],[2,2.6],[3,3],[3.5,3.4],[4,3.2],[5,4.1],[6,4.6],[6.5,5.2],[7.5,5.6],[8.5,6.4],[9,6.1],[9.5,7]];
+      const sx=v=>x+v/10*w,sy=v=>bY-v/8*h;
+      P.forEach(p=>A(gt,'circle',{cx:sx(p[0]),cy:sy(p[1]),r:5,fill:'var(--cool)',opacity:.85,filter:'drop-shadow(0 0 5px rgba(79,208,255,.5))'}));
+      A(gt,'text',{class:'vsub',x:x+w/2,y:bY+24,'text-anchor':'middle'},'Study hours →');
+      A(gt,'text',{class:'vsub',x:x+4,y:y-2},'↑ Score');})();
+    (function(){const x=560,y=180,w=360,h=280,bY=y+h,v=[3,3.4,3.2,4,4.5,4.2,5,5.6,5.3,6.2,6.8,7.2];
+      A(gt,'text',{class:'vtitle',x,y:y-10},'Time-series plot');
+      A(gt,'line',{x1:x,y1:bY,x2:x+w,y2:bY,class:'vaxis'});A(gt,'line',{x1:x,y1:y,x2:x,y2:bY,class:'vaxis'});
+      const sx=i=>x+i/(v.length-1)*w,sy=val=>bY-val/8*h,pts=v.map((val,i)=>[sx(i),sy(val)]);
+      A(gt,'polyline',{points:pts.map(p=>p.map(z=>z.toFixed(1)).join(',')).join(' '),fill:'none',stroke:'var(--gold)','stroke-width':2});
+      pts.forEach(p=>A(gt,'circle',{cx:p[0],cy:p[1],r:3,fill:'var(--gold)'}));
+      A(gt,'text',{class:'vsub',x:x+w/2,y:bY+24,'text-anchor':'middle'},'Month →');
+      A(gt,'text',{class:'vsub',x:x+4,y:y-2},'↑ Value');})();
+  })();
+
+  // ---------- correlation / regression ----------
+  const BIVx=[1,2,3,4,5,6,7,8,9,10], BIVy=[36,44,43,52,51,61,60,68,72,73];
+  const bmx=BIVx.reduce((a,b)=>a+b,0)/BIVx.length, bmy=BIVy.reduce((a,b)=>a+b,0)/BIVy.length;
+  let Sxx=0,Syy=0,Sxy=0; BIVx.forEach((xv,i)=>{const dx=xv-bmx,dy=BIVy[i]-bmy;Sxx+=dx*dx;Syy+=dy*dy;Sxy+=dx*dy;});
+  const rC=Sxy/Math.sqrt(Sxx*Syy), b1=Sxy/Sxx, b0=bmy-b1*bmx, R2=rC*rC;
+  (function buildBiv(){
+    const Lx=175,Ty=150,W=590,H=268,Bt=Ty+H,Rx=Lx+W;
+    const xmin=0.5,xmax=10.5,ymin=Math.min(...BIVy)-6,ymax=Math.max(...BIVy)+6;
+    const sx=v=>Lx+(v-xmin)/(xmax-xmin)*W, sy=v=>Bt-(v-ymin)/(ymax-ymin)*H;
+    const A=(g,t,a,x)=>g.appendChild(mk(t,a,x));
+    const scatter=g=>{A(g,'line',{x1:Lx,y1:Bt,x2:Rx,y2:Bt,class:'vaxis'});A(g,'line',{x1:Lx,y1:Ty,x2:Lx,y2:Bt,class:'vaxis'});
+      A(g,'text',{class:'vsub',x:Rx,y:Bt+20,'text-anchor':'end'},'Experience (yrs) →');A(g,'text',{class:'vsub',x:Lx-6,y:Ty+2,'text-anchor':'end'},'↑ Salary ($k)');
+      BIVx.forEach((xv,i)=>A(g,'circle',{cx:sx(xv),cy:sy(BIVy[i]),r:5,fill:'var(--cool)',opacity:.88,filter:'drop-shadow(0 0 5px rgba(79,208,255,.5))'}));};
+    const gc=document.getElementById('corrViz'); scatter(gc);
+    (function(){const gx0=250,gx1=760,gy=478;A(gc,'line',{x1:gx0,y1:gy,x2:gx1,y2:gy,stroke:'#3a4570','stroke-width':3,'stroke-linecap':'round'});
+      [['−1',gx0],['0',(gx0+gx1)/2],['+1',gx1]].forEach(t=>A(gc,'text',{class:'vsub',x:t[1],y:gy+20,'text-anchor':'middle'},t[0]));
+      const gm=gx0+(rC+1)/2*(gx1-gx0);
+      A(gc,'circle',{cx:gm,cy:gy,r:8,fill:'var(--gold)',filter:'drop-shadow(0 0 8px rgba(255,203,91,.7))'});
+      A(gc,'text',{x:gm,y:gy-16,'text-anchor':'middle',class:'mlabel',fill:'var(--gold)'},`r ≈ ${rC.toFixed(2)}`);
+      A(gc,'text',{class:'vsub',x:(gx0+gx1)/2,y:gy-38,'text-anchor':'middle'},'strong positive');})();
+    const gr=document.getElementById('regViz');
+    BIVx.forEach((xv,i)=>A(gr,'line',{x1:sx(xv),y1:sy(BIVy[i]),x2:sx(xv),y2:sy(b0+b1*xv),class:'resid'}));
+    scatter(gr);
+    A(gr,'line',{class:'regline',x1:sx(xmin),y1:sy(b0+b1*xmin),x2:sx(xmax),y2:sy(b0+b1*xmax),pathLength:1});
+    A(gr,'text',{x:sx(3),y:sy(b0+b1*3)-14,class:'mlabel',fill:'var(--gold)'},`ŷ = ${b0.toFixed(1)} + ${b1.toFixed(2)}x`);
+    A(gr,'text',{x:Rx,y:Ty+4,'text-anchor':'end',class:'vsub',fill:'var(--bell)'},`R² ≈ ${R2.toFixed(2)}`);
+  })();
+  document.getElementById('staReg').innerHTML=`
+    <div class="xhead">Example — 10 employees: <b>Experience (yrs)</b> x = 1…10 &nbsp;vs&nbsp; <b>Salary ($k)</b> y = 36, 44, 43, 52, 51, 61, 60, 68, 72, 73.</div>
+    <div class="codeGrid">
+      <div class="codeCard"><div class="ct">Stata</div><pre class="code"><span class="cm">* correlation</span>
+correlate exp salary
+pwcorr exp salary, sig
+<span class="cm">* regression + graph</span>
+regress salary exp
+predict yhat
+twoway (scatter salary exp) (lfit salary exp)</pre></div>
+      <div class="codeCard"><div class="ct">Excel</div><pre class="code">r     =CORREL(A2:A11,B2:B11)
+slope =SLOPE(B2:B11,A2:A11)
+b0    =INTERCEPT(B2:B11,A2:A11)
+R²    =RSQ(B2:B11,A2:A11)
+<span class="cm">' graph:</span> select A:B ▸ Insert ▸ Scatter (X Y)
+  ▸ right-click a point ▸ Add Trendline ▸ Linear
+  ▸ tick "Display Equation" + "Display R-squared"
+<span class="cm">' full table:</span> Data ▸ Data Analysis ▸ Regression</pre></div>
+      <div class="codeCard"><div class="ct">AI prompt</div><pre class="code">Here are two columns, Experience and
+Salary [ paste the 10 rows ]. Compute
+Pearson r and fit salary = b0 + b1·exp.
+Report r, R², slope, intercept and whether
+the slope is significant; draw a scatter
+with the fitted line and interpret in one
+sentence.</pre></div>
+      <div class="codeCard"><div class="ct">Reading the output</div><pre class="code"> salary | Coef.  P&gt;|t|
+--------+--------------
+ exp    | ${b1.toFixed(2)}   0.000
+ _cons  | ${b0.toFixed(2)}
+--------+--------------
+ R-squared = ${R2.toFixed(2)}</pre>
+        <ul class="psteps" style="margin-top:10px">
+          <li><b>exp = ${b1.toFixed(2)}</b>: each extra year adds ≈ $${b1.toFixed(1)}k to predicted salary.</li>
+          <li><b>_cons = ${b0.toFixed(1)}</b>: predicted salary at 0 years.</li>
+          <li><b>P&gt;|t| = 0.000 &lt; 0.05</b> → experience is a significant predictor.</li>
+          <li><b>R² = ${R2.toFixed(2)}</b> → ${Math.round(R2*100)}% of salary variation is explained.</li>
+          <li><b>r = ${rC.toFixed(2)}</b> → very strong positive relationship.</li>
+        </ul></div>
+    </div>`;
+
+  // ---------- why statistics matters ----------
+  (function buildWhy(){
+    const g=document.getElementById('whyViz'), A=(t,a,x)=>g.appendChild(mk(t,a,x));
+    function emblem(type,cx,cy){const E=(t,a)=>g.appendChild(mk(t,a));
+      if(type==='scale'){const c='var(--gold)';
+        E('line',{x1:cx,y1:cy-16,x2:cx,y2:cy+14,stroke:c,'stroke-width':2});
+        E('line',{x1:cx-32,y1:cy-16,x2:cx+32,y2:cy-16,stroke:c,'stroke-width':2});
+        [-32,32].forEach(d=>{const ex=cx+d;
+          E('line',{x1:ex,y1:cy-16,x2:ex-10,y2:cy-2,stroke:c,'stroke-width':1.4});
+          E('line',{x1:ex,y1:cy-16,x2:ex+10,y2:cy-2,stroke:c,'stroke-width':1.4});
+          E('line',{x1:ex-12,y1:cy-2,x2:ex+12,y2:cy-2,stroke:c,'stroke-width':1.4});});
+        E('path',{d:`M${cx-12},${cy+14} L${cx+12},${cy+14} L${cx},${cy+4} Z`,fill:c});
+      } else if(type==='decide'){const c='var(--teal)';
+        E('circle',{cx:cx,cy:cy-18,r:4,fill:c});
+        E('line',{x1:cx,y1:cy-14,x2:cx,y2:cy-6,stroke:c,'stroke-width':2});
+        E('line',{x1:cx,y1:cy-6,x2:cx-26,y2:cy+14,stroke:c,'stroke-width':2});
+        E('line',{x1:cx,y1:cy-6,x2:cx+26,y2:cy+14,stroke:c,'stroke-width':2});
+        E('polyline',{points:`${cx+18},${cy+12} ${cx+24},${cy+18} ${cx+34},${cy+4}`,fill:'none',stroke:c,'stroke-width':2,'stroke-linecap':'round','stroke-linejoin':'round'});
+      } else {const c='var(--cool)';[14,24,18,30].forEach((h,i)=>E('rect',{x:cx-30+i*16,y:cy+16-h,width:11,height:h,fill:c,opacity:.85,rx:2}));
+        E('line',{x1:cx-34,y1:cy+16,x2:cx+34,y2:cy+16,stroke:'#3a4570','stroke-width':1});}
+    }
+    const noise=mk('g',{class:'whyfloat'});
+    [[-30,-18],[10,-30],[34,-6],[-18,20],[6,4],[-4,34],[26,26],[44,-24],[-40,8],[18,-12],[-12,-34],[38,12]]
+      .forEach(o=>noise.appendChild(mk('circle',{cx:230+o[0],cy:214+o[1],r:6,fill:'#5a6a9c',opacity:.5})));
+    g.appendChild(noise);
+    A('text',{class:'vsub',x:230,y:296,'text-anchor':'middle'},'noise · opinions · raw data');
+    A('line',{x1:342,y1:214,x2:452,y2:214,stroke:'var(--gold)','stroke-width':2.5,'marker-end':'url(#arrowhead)'});
+    A('text',{x:397,y:199,'text-anchor':'middle',class:'mlabel',fill:'var(--gold)'},'statistics');
+    const bx=500,by=286,bw=270,bh=140;
+    A('line',{x1:bx,y1:by,x2:bx+bw,y2:by,class:'vaxis'});A('line',{x1:bx,y1:by-bh,x2:bx,y2:by,class:'vaxis'});
+    const sig=[[0,18],[1,34],[2,52],[3,66],[4,92],[5,120]],px=i=>bx+i/5*bw,py=v=>by-v/130*bh;
+    A('polyline',{class:'signal',pathLength:1,fill:'none',points:sig.map(p=>`${px(p[0]).toFixed(1)},${py(p[1]).toFixed(1)}`).join(' ')});
+    sig.forEach(p=>A('circle',{cx:px(p[0]),cy:py(p[1]),r:4,fill:'var(--teal)',filter:'drop-shadow(0 0 5px rgba(51,230,192,.6))'}));
+    A('text',{class:'vsub',x:bx+bw/2,y:by+22,'text-anchor':'middle'},'signal · insight · clarity');
+    [{cx:230,em:'scale',t:'Evidence, not opinion',s:'test claims against real data'},
+     {cx:500,em:'decide',t:'Decide under uncertainty',s:'weigh risk and likelihood'},
+     {cx:770,em:'society',t:"See society's facts",s:'prices · health · incomes · trends'}
+    ].forEach(p=>{emblem(p.em,p.cx,384);
+      A('text',{class:'mlabel',x:p.cx,y:442,'text-anchor':'middle',fill:'var(--ink)'},p.t);
+      A('text',{class:'vsub',x:p.cx,y:462,'text-anchor':'middle'},p.s);});
+  })();
+
+  // ---------- quiz ----------
+  let startQuizTimer=()=>{}, pauseQuizTimer=()=>{};
+  const QUIZ=[
+    {q:'The most frequently occurring value in a dataset is the…',o:['Mean','Median','Mode','Range'],c:2},
+    {q:'“Eye colour: brown, blue, green” is which type of variable?',o:['Ordinal','Nominal','Interval','Ratio'],c:1},
+    {q:'The median of a dataset is…',o:['The most frequent value','The average','The middle value when sorted','The largest value'],c:2},
+    {q:'The mean is found by…',o:['Taking the middle value','Adding all values and dividing by the count','Picking the most frequent value','Subtracting the smallest from the largest'],c:1},
+    {q:'The range is calculated as…',o:['Q3 − Q1','Maximum − Minimum','Mean − Median','Σ(x − x̄)²'],c:1},
+    {q:'A bar chart is best for showing…',o:['Category counts','A relationship between two numbers','Cumulative percentages','A true zero'],c:0},
+    {q:'Which of these is a measure of central tendency?',o:['Mean','Range','Variance','Interquartile range'],c:0},
+    {q:'Which measure is most affected by outliers?',o:['Median','Mode','Mean','Interquartile range'],c:2},
+    {q:'A scatter plot is used to show…',o:['Category counts','The relationship between two numerical variables','A single distribution','Cumulative frequency'],c:1},
+    {q:'Which scale has a true zero, so ratios are meaningful?',o:['Temperature in °C','Weight in kg','A 1–5 satisfaction rating','IQ score'],c:1},
+    {q:'Variance measures…',o:['The middle value','The most common value','The average squared distance from the mean','The number of values'],c:2},
+    {q:'The standard deviation equals…',o:['The square of the variance','The square root of the variance','The mean of the deviations','Always zero'],c:1},
+    {q:'Temperature in °C is measured on which scale?',o:['Nominal','Ordinal','Interval','Ratio'],c:2},
+    {q:'In a right-skewed (positive) distribution, usually…',o:['Mean < Median','Mean = Median','Mean > Median','There is no mode'],c:2},
+    {q:'A correlation of r = −0.9 indicates…',o:['No relationship','A weak positive relationship','A strong negative relationship','A perfect positive relationship'],c:2},
+    {q:'By the IQR rule, a value is an outlier if it lies beyond…',o:['1 standard deviation','Q1 − 1.5·IQR or Q3 + 1.5·IQR','The mean','The median'],c:1},
+    {q:'In the five-number summary, Q2 is the…',o:['Minimum','First quartile','Median','Maximum'],c:2},
+    {q:'In simple linear regression ŷ = b₀ + b₁x, b₁ is the…',o:['Intercept','Slope — the change in y per unit of x','Correlation','Error term'],c:1},
+    {q:'The coefficient of determination R² represents…',o:['The slope of the line','The proportion of variation in y explained by x','The mean of y','The sample size'],c:1},
+    {q:'The coefficient of variation (CV) is…',o:['Variance minus the mean','Standard deviation ÷ mean (× 100%) — a unit-free spread','Mean ÷ median','Range ÷ IQR'],c:1},
+  ];
+  (function buildQuiz(){
+    const mkEl=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
+    const list=document.getElementById('qlist'),sel=new Array(QUIZ.length).fill(null),letters=['A','B','C','D'];
+    const qtime=document.getElementById('qtime'),qans=document.getElementById('qans'),qres=document.getElementById('qresult');
+    let locked=false, remain=600, tid=null;
+    QUIZ.forEach((it,qi)=>{
+      const card=mkEl('div','qcard'), q=mkEl('div','qq');
+      q.innerHTML=`<span class="qn">Q${qi+1}</span>${it.q}`; card.appendChild(q);
+      const opts=mkEl('div','qopts');
+      it.o.forEach((ot,oi)=>{const b=mkEl('button','qopt');b.dataset.q=qi;b.dataset.o=oi;
+        b.innerHTML=`<span class="mk">${letters[oi]}</span><span>${ot}</span>`;opts.appendChild(b);});
+      card.appendChild(opts); list.appendChild(card);
+    });
+    const optsOf=qi=>[...list.querySelectorAll(`.qopt[data-q="${qi}"]`)];
+    list.addEventListener('click',e=>{const b=e.target.closest('.qopt');if(!b||locked)return;
+      const qi=+b.dataset.q,oi=+b.dataset.o; sel[qi]=oi;
+      optsOf(qi).forEach(x=>x.classList.remove('sel','correct','wrong'));
+      b.classList.add('sel'); qres.classList.remove('on');
+      qans.textContent=sel.filter(v=>v!==null).length;});
+    function reveal(){QUIZ.forEach((it,qi)=>{const os=optsOf(qi);
+      os.forEach((x,i)=>{x.classList.remove('correct','wrong');x.querySelector('.mk').textContent=letters[i];});
+      os[it.c].classList.add('correct'); os[it.c].querySelector('.mk').textContent='✓';
+      if(sel[qi]!=null&&sel[qi]!==it.c){os[sel[qi]].classList.add('wrong');os[sel[qi]].querySelector('.mk').textContent='✗';}});}
+    function score(){const n=QUIZ.reduce((a,it,qi)=>a+(sel[qi]===it.c?1:0),0),pct=Math.round(n/QUIZ.length*100);
+      qres.innerHTML=`You scored <b>${n} / ${QUIZ.length}</b> — <b>${pct}%</b>`; qres.classList.add('on');}
+    function reset(){pauseQuizTimer(); sel.fill(null); locked=false; remain=600;
+      list.querySelectorAll('.qopt').forEach(x=>x.classList.remove('sel','correct','wrong'));
+      list.querySelectorAll('.qcard').forEach(card=>card.querySelectorAll('.qopt .mk').forEach((m,i)=>m.textContent=letters[i]));
+      qans.textContent='0'; qres.classList.remove('on'); qtime.textContent='10:00'; qtime.classList.remove('low'); startQuizTimer();}
+    document.getElementById('qShow').addEventListener('click',reveal);
+    document.getElementById('qScore').addEventListener('click',score);
+    document.getElementById('qReset').addEventListener('click',reset);
+    const fmt=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    startQuizTimer=()=>{if(tid||locked||remain<=0)return; tid=setInterval(()=>{remain--; qtime.textContent=fmt(Math.max(0,remain));
+      qtime.classList.toggle('low',remain<=60); if(remain<=0){clearInterval(tid);tid=null;locked=true;reveal();score();}},1000);};
+    pauseQuizTimer=()=>{if(tid){clearInterval(tid);tid=null;}};
+  })();
+
+  // ---------- n vs n-1 · SD vs SE ----------
+  const sVar=sumsq/(n-1), sSD=Math.sqrt(sVar), SE=sSD/Math.sqrt(n);
+  document.getElementById('nvn1').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Two versions of variance</div>
+        <div class="fence">Population: σ² = Σ(x − μ)² ⁄ N &nbsp;→&nbsp; divide by <b>N</b> (you have every value).<br><br>Sample: s² = Σ(x − x̄)² ⁄ (n − 1) &nbsp;→&nbsp; divide by <b>n − 1</b> (the data is a sample).</div>
+        <div class="ph" style="margin-top:12px">Why n − 1?  (Bessel's correction)</div>
+        <ul class="psteps">
+          <li>x̄ is computed from the same data, so deviations around it are on average a bit too small.</li>
+          <li>Dividing by n would make s² biased low; dividing by n − 1 corrects that bias.</li>
+          <li>Degrees of freedom: once x̄ is fixed the deviations must sum to zero, so only n − 1 are free to vary.</li>
+          <li>For large n the two answers nearly coincide.</li>
+        </ul>
+      </div>
+      <div class="pcol">
+        <div class="ph">Our data — Σ(x − x̄)² = ${f(sumsq)}, n = ${n}</div>
+        <table class="kv"><tr><th>Use</th><th>Divisor</th><th>Variance</th><th>SD</th></tr>
+          <tr><td>Population (÷ n)</td><td>${n}</td><td>${variance.toFixed(2)}</td><td>${std.toFixed(2)}</td></tr>
+          <tr><td>Sample (÷ n−1)</td><td>${n-1}</td><td>${sVar.toFixed(2)}</td><td>${sSD.toFixed(2)}</td></tr></table>
+        <div class="fence" style="margin-top:8px">Rule of thumb: a whole population → <b>n</b>; a sample used to infer about a population → <b>n − 1</b>.</div>
+        <div class="ph" style="margin-top:12px">In software</div>
+        <pre class="code">Excel   VAR.P / STDEV.P   → n
+        VAR.S / STDEV.S   → n − 1
+Stata   summarize x       → n − 1 (sample)
+Python  np.var(x)         → n
+        np.var(x, ddof=1) → n − 1
+        pandas .var()     → n − 1</pre>
+      </div>
+    </div>`;
+  document.getElementById('sdse').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Standard deviation (SD)</div>
+        <div class="fence">Spread of the <b>data</b> around the mean, in the same units as the data. It says how much individual values vary.</div>
+        <div class="ph" style="margin-top:12px">Standard error of the mean (SE)</div>
+        <div class="fence">SE = SD ⁄ √n. How precisely the <b>sample mean</b> estimates the true mean — the SD of x̄ across repeated samples.</div>
+      </div>
+      <div class="pcol">
+        <div class="ph">The key difference</div>
+        <ul class="psteps">
+          <li><b>SD</b> describes the observations; it stays about the same as n grows.</li>
+          <li><b>SE</b> describes the mean's precision; it shrinks as n grows — bigger sample, tighter estimate.</li>
+          <li>Report <b>SD</b> for data spread; use <b>SE</b> for error bars and confidence intervals on a mean.</li>
+          <li>95% CI for the mean ≈ x̄ ± 1.96 · SE.</li>
+        </ul>
+        <div class="ph" style="margin-top:12px">Our data — x̄ = ${f(mean)}, n = ${n}</div>
+        <table class="kv"><tr><th>Quantity</th><th>Formula</th><th>Value</th></tr>
+          <tr><td>Sample SD</td><td>√(Σ(x−x̄)² ⁄ (n−1))</td><td>${sSD.toFixed(2)}</td></tr>
+          <tr><td>Standard error</td><td>SD ⁄ √n</td><td>${SE.toFixed(2)}</td></tr>
+          <tr><td>95% CI of mean</td><td>x̄ ± 1.96·SE</td><td>${(mean-1.96*SE).toFixed(1)} … ${(mean+1.96*SE).toFixed(1)}</td></tr></table>
+      </div>
+    </div>`;
+
+  // ---------- case study: Brand X survey ----------
+  const RAW=[4,5,3,4,2,5,4,3,1,4,5,4,3,4,5,2,4,5,3,4,1,5,4,3,4,2,5,4,3,5];
+  const rn=RAW.length, rcount={1:0,2:0,3:0,4:0,5:0}; RAW.forEach(v=>rcount[v]++);
+  const rmean=RAW.reduce((a,b)=>a+b,0)/rn, rsorted=[...RAW].sort((a,b)=>a-b), rmed=med(rsorted);
+  let rmode=1,rmc=0; [1,2,3,4,5].forEach(k=>{if(rcount[k]>rmc){rmc=rcount[k];rmode=k;}});
+  const rmin=Math.min(...RAW),rmax=Math.max(...RAW),rrange=rmax-rmin;
+  const rss=RAW.reduce((a,v)=>a+(v-rmean)**2,0), rvarS=rss/(rn-1), rsdS=Math.sqrt(rvarS), rcv=rsdS/rmean*100;
+  const pctSat=(rcount[4]+rcount[5])/rn*100, pctNeu=rcount[3]/rn*100, pctDis=(rcount[1]+rcount[2])/rn*100;
+  const LBL={1:'Very dissatisfied',2:'Dissatisfied',3:'Neutral',4:'Satisfied',5:'Very satisfied'};
+
+  document.getElementById('csvSurvey').innerHTML=`
+    <div class="pcol" style="max-width:740px;margin:0 auto">
+      <div class="ph">Brand X — Customer Satisfaction Survey &nbsp;(n = ${rn} respondents)</div>
+      <div class="fence"><b>Q1.</b> Overall, how satisfied are you with Brand X?<br>
+        <span style="color:var(--cool)">1 = Very dissatisfied · 2 = Dissatisfied · 3 = Neutral · 4 = Satisfied · 5 = Very satisfied</span></div>
+      <ul class="psteps" style="margin-top:12px">
+        <li><b>Q2.</b> How likely are you to recommend Brand X? (0–10)</li>
+        <li><b>Q3.</b> Which product line do you mainly use? (Standard / Plus / Pro)</li>
+        <li><b>Q4.</b> How long have you been a customer? (months)</li>
+        <li><b>Q5.</b> Would you buy again? (Yes / No)</li>
+      </ul>
+      <div class="fence" style="margin-top:10px">This walkthrough analyses <b>Q1 — overall satisfaction (1–5)</b>, an ordinal rating, across all ${rn} respondents.</div>
+    </div>`;
+  document.getElementById('csvRaw').innerHTML=`
+    <div class="pcol" style="max-width:800px;margin:0 auto">
+      <div class="ph">Raw data — Q1 rating for each of the ${rn} respondents</div>
+      <div class="pdata">${RAW.map((v,i)=>`R${i+1}=${v}`).join('  ·  ')}</div>
+      <div class="fence" style="margin-top:10px">Responses in the order collected — hard to read as a list. Next, we organise them into a table.</div>
+    </div>`;
+  let cum=0,rows='';
+  [1,2,3,4,5].forEach(k=>{const fr=rcount[k],p=fr/rn*100;cum+=p;
+    rows+=`<tr><td>${k}</td><td>${LBL[k]}</td><td>${fr}</td><td>${p.toFixed(1)}%</td><td>${cum.toFixed(1)}%</td></tr>`;});
+  document.getElementById('csvFreq').innerHTML=`
+    <div class="pcol" style="max-width:720px;margin:0 auto">
+      <div class="ph">Frequency distribution — Q1 satisfaction</div>
+      <table class="kv"><tr><th>Rating</th><th>Meaning</th><th>Freq</th><th>%</th><th>Cum. %</th></tr>${rows}
+        <tr><td>Total</td><td>—</td><td>${rn}</td><td>100%</td><td>—</td></tr></table>
+      <div class="fence" style="margin-top:10px">The pattern is now clear: ratings cluster at <b>4 (Satisfied)</b>, with a small dissatisfied tail.</div>
+    </div>`;
+  document.getElementById('csvStats').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Descriptive statistics — Q1 (1–5)</div>
+        <table class="kv"><tr><th>Statistic</th><th>Value</th></tr>
+          <tr><td>Count (n)</td><td>${rn}</td></tr><tr><td>Mean</td><td>${rmean.toFixed(2)}</td></tr>
+          <tr><td>Median</td><td>${rmed}</td></tr><tr><td>Mode</td><td>${rmode}</td></tr>
+          <tr><td>Minimum</td><td>${rmin}</td></tr><tr><td>Maximum</td><td>${rmax}</td></tr>
+          <tr><td>Range</td><td>${rrange}</td></tr>
+          <tr><td>Variance (sample)</td><td>${rvarS.toFixed(2)}</td></tr>
+          <tr><td>Std deviation (sample)</td><td>${rsdS.toFixed(2)}</td></tr>
+          <tr><td>Coeff. of variation</td><td>${rcv.toFixed(0)}%</td></tr></table>
+      </div>
+      <div class="pcol">
+        <div class="ph">Sentiment shares</div>
+        <table class="kv"><tr><th>Group</th><th>Share</th></tr>
+          <tr><td>Satisfied (4–5)</td><td>${pctSat.toFixed(1)}%</td></tr>
+          <tr><td>Neutral (3)</td><td>${pctNeu.toFixed(1)}%</td></tr>
+          <tr><td>Dissatisfied (1–2)</td><td>${pctDis.toFixed(1)}%</td></tr></table>
+        <div class="fence" style="margin-top:12px">Mean ${rmean.toFixed(2)} &lt; Median ${rmed} → a slight left (negative) skew: a few low ratings pull the mean below the middle.</div>
+      </div>
+    </div>`;
+  document.getElementById('csvInterp').innerHTML=`
+    <div class="pcol" style="max-width:770px;margin:0 auto">
+      <div class="ph">Reading the result — start to finish</div>
+      <ul class="psteps">
+        <li><b>Centre:</b> median and mode are both <b>4 (Satisfied)</b>; the mean is ${rmean.toFixed(2)} — customers lean clearly positive.</li>
+        <li><b>Spread:</b> SD ≈ ${rsdS.toFixed(2)} on a 1–5 scale (CV ≈ ${rcv.toFixed(0)}%) — moderate disagreement, not unanimous.</li>
+        <li><b>Shape:</b> mean &lt; median → a slight negative skew; a minority of unhappy customers drags the average down.</li>
+        <li><b>Shares:</b> <b>${pctSat.toFixed(0)}%</b> satisfied, ${pctNeu.toFixed(0)}% neutral, <b>${pctDis.toFixed(0)}%</b> dissatisfied.</li>
+      </ul>
+      <div class="fence" style="margin-top:10px"><b>Decision:</b> Brand X is well regarded overall, but the ~${pctDis.toFixed(0)}% detractor tail and ${pctNeu.toFixed(0)}% neutrals are the group to win over — follow up on what drove the low ratings.</div>
+    </div>`;
+  (function buildCSVChart(){
+    const g=document.getElementById('csvChart'),A=(t,a,x)=>g.appendChild(mk(t,a,x));
+    const bx0=175,bw=110,gap=30,bY=440,maxH=250,mxF=Math.max(rcount[1],rcount[2],rcount[3],rcount[4],rcount[5]);
+    const cols=['#ff5f6d','#ffb45a','#ffcb5b','#33e6c0','#5bd08a'],short=['Very dissat.','Dissat.','Neutral','Satisfied','Very sat.'];
+    A('text',{class:'vtitle',x:500,y:158,'text-anchor':'middle'},`Brand X — overall satisfaction (n = ${rn})`);
+    A('line',{x1:150,y1:bY,x2:850,y2:bY,class:'vaxis'});
+    [1,2,3,4,5].forEach((k,i)=>{const fr=rcount[k],h=fr/mxF*maxH,x=bx0+i*(bw+gap);
+      A('rect',{x:x,y:bY-h,width:bw,height:h,fill:cols[i],rx:4,opacity:.9});
+      A('text',{x:x+bw/2,y:bY-h-10,'text-anchor':'middle',class:'mlabel',fill:cols[i]},fr);
+      A('text',{class:'vsub',x:x+bw/2,y:bY+20,'text-anchor':'middle',fill:'var(--ink)'},k);
+      A('text',{class:'vsub',x:x+bw/2,y:bY+36,'text-anchor':'middle'},short[i]);});
+  })();
+
+  // ---------- case study: poverty ----------
+  const POV=[
+    {e:'None',h:6,w:1.8,t:'Walk',g:'F'},{e:'Primary',h:5,w:2.5,t:'Bicycle',g:'M'},{e:'Secondary',h:4,w:4.0,t:'Motorbike',g:'M'},
+    {e:'Primary',h:7,w:2.0,t:'Walk',g:'F'},{e:'Tertiary',h:3,w:7.5,t:'Car',g:'M'},{e:'None',h:8,w:1.5,t:'Walk',g:'F'},
+    {e:'Secondary',h:4,w:4.5,t:'Motorbike',g:'M'},{e:'Primary',h:6,w:2.8,t:'Bicycle',g:'F'},{e:'Secondary',h:5,w:3.8,t:'Public',g:'M'},
+    {e:'Tertiary',h:2,w:8.0,t:'Car',g:'M'},{e:'Primary',h:5,w:2.3,t:'Walk',g:'F'},{e:'None',h:7,w:1.6,t:'Walk',g:'M'},
+    {e:'Secondary',h:3,w:4.2,t:'Motorbike',g:'F'},{e:'Primary',h:6,w:2.6,t:'Bicycle',g:'M'},{e:'Tertiary',h:4,w:6.8,t:'Car',g:'F'},
+    {e:'None',h:9,w:1.4,t:'Walk',g:'F'},{e:'Secondary',h:4,w:4.0,t:'Public',g:'M'},{e:'Primary',h:5,w:2.4,t:'Bicycle',g:'M'},
+    {e:'Tertiary',h:3,w:7.0,t:'Motorbike',g:'M'},{e:'None',h:6,w:1.9,t:'Walk',g:'F'},{e:'Secondary',h:5,w:3.6,t:'Public',g:'M'},
+    {e:'Primary',h:7,w:2.1,t:'Walk',g:'F'},{e:'Secondary',h:4,w:4.3,t:'Motorbike',g:'M'},{e:'Primary',h:6,w:2.7,t:'Bicycle',g:'F'},
+    {e:'Tertiary',h:2,w:7.8,t:'Car',g:'M'},{e:'None',h:8,w:1.7,t:'Walk',g:'F'},{e:'Secondary',h:3,w:4.6,t:'Motorbike',g:'M'},
+    {e:'Primary',h:5,w:2.2,t:'Bicycle',g:'F'},{e:'Tertiary',h:4,w:6.5,t:'Car',g:'M'},{e:'None',h:7,w:1.5,t:'Walk',g:'F'}
+  ];
+  const eduO=['None','Primary','Secondary','Tertiary'], trO=['Walk','Bicycle','Motorbike','Public','Car'];
+  const numSum=arr=>{const nn=arr.length,s=[...arr].sort((a,b)=>a-b),mn=arr.reduce((a,b)=>a+b,0)/nn;
+    const md=nn%2?s[(nn-1)/2]:(s[nn/2-1]+s[nn/2])/2, ss=arr.reduce((a,v)=>a+(v-mn)**2,0);
+    return {n:nn,mean:mn,median:md,min:s[0],max:s[nn-1],range:s[nn-1]-s[0],sd:Math.sqrt(ss/(nn-1))};};
+  const hhArr=POV.map(r=>r.h), wArr=POV.map(r=>r.w), hhS=numSum(hhArr), wS=numSum(wArr);
+  const eduF=eduO.map(e=>POV.filter(r=>r.e===e).length), trF=trO.map(t=>POV.filter(r=>r.t===t).length);
+  const headF=POV.filter(r=>r.g==='F').length, headM=POV.length-headF;
+  const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  const wByEdu=eduO.map(e=>avg(POV.filter(r=>r.e===e).map(r=>r.w)));
+  const wMale=avg(POV.filter(r=>r.g==='M').map(r=>r.w)), wFem=avg(POV.filter(r=>r.g==='F').map(r=>r.w));
+  const eduMode=eduO[eduF.indexOf(Math.max(...eduF))], trMode=trO[trF.indexOf(Math.max(...trF))];
+  const hhMode=(()=>{const c={};hhArr.forEach(v=>c[v]=(c[v]||0)+1);let m=hhArr[0],k=0;for(const x in c)if(c[x]>k){k=c[x];m=+x;}return m;})();
+  const wCV=wS.sd/wS.mean*100;
+
+  document.getElementById('povIntro').innerHTML=`
+    <div class="pcol" style="max-width:760px;margin:0 auto">
+      <div class="ph">A Poverty Study — 30 households · five variables</div>
+      <div class="fence">Which households are poor, and why? For each household we record five variables and look for the patterns behind poverty.</div>
+      <table class="kv" style="margin-top:12px"><tr><th>Variable</th><th>What it records</th><th>Scale</th></tr>
+        <tr><td>Education</td><td>Head's schooling: None → Tertiary</td><td>Ordinal</td></tr>
+        <tr><td>Household size</td><td>Number of people</td><td>Discrete</td></tr>
+        <tr><td>Wage / hour</td><td>Earnings in $</td><td>Continuous · ratio</td></tr>
+        <tr><td>Transportation</td><td>Main mode of travel</td><td>Nominal</td></tr>
+        <tr><td>Head of family</td><td>Male or female</td><td>Nominal</td></tr></table>
+    </div>`;
+  document.getElementById('povRaw').innerHTML=`
+    <div class="pcol"><div class="ph">Household data — 30 records</div>
+      <table class="vt"><thead><tr><th>#</th><th>Education</th><th>Size</th><th>Wage/hr</th><th>Transport</th><th>Head</th></tr></thead>
+      <tbody>${POV.map((r,i)=>`<tr><td>${i+1}</td><td>${r.e}</td><td>${r.h}</td><td>$${r.w.toFixed(1)}</td><td>${r.t}</td><td>${r.g==='F'?'Female':'Male'}</td></tr>`).join('')}</tbody></table>
+    </div>`;
+  document.getElementById('povStats').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Household size (people)</div>
+        <table class="kv"><tr><th>Statistic</th><th>Value</th></tr>
+          <tr><td>Mean</td><td>${hhS.mean.toFixed(1)}</td></tr><tr><td>Median</td><td>${hhS.median}</td></tr>
+          <tr><td>Mode</td><td>${hhMode}</td></tr><tr><td>Min–Max</td><td>${hhS.min}–${hhS.max}</td></tr>
+          <tr><td>Range</td><td>${hhS.range}</td></tr><tr><td>SD (sample)</td><td>${hhS.sd.toFixed(2)}</td></tr></table>
+        <div class="ph" style="margin-top:12px">Wage per hour ($)</div>
+        <table class="kv"><tr><th>Statistic</th><th>Value</th></tr>
+          <tr><td>Mean</td><td>$${wS.mean.toFixed(2)}</td></tr><tr><td>Median</td><td>$${wS.median.toFixed(1)}</td></tr>
+          <tr><td>Min–Max</td><td>$${wS.min.toFixed(1)}–$${wS.max.toFixed(1)}</td></tr>
+          <tr><td>SD (sample)</td><td>$${wS.sd.toFixed(2)}</td></tr><tr><td>CV</td><td>${wCV.toFixed(0)}%</td></tr></table>
+      </div>
+      <div class="pcol">
+        <div class="ph">Categorical summary</div>
+        <table class="kv"><tr><th>Variable</th><th>Most common</th><th>Count</th></tr>
+          <tr><td>Education</td><td>${eduMode}</td><td>${Math.max(...eduF)}</td></tr>
+          <tr><td>Transport</td><td>${trMode}</td><td>${Math.max(...trF)}</td></tr>
+          <tr><td>Head</td><td>${headM>=headF?'Male':'Female'}</td><td>${Math.max(headM,headF)}</td></tr></table>
+        <div class="fence" style="margin-top:12px">Mean wage: <b>male-headed $${wMale.toFixed(2)}</b> vs <b>female-headed $${wFem.toFixed(2)}</b> — female-headed households earn markedly less.</div>
+        <div class="fence" style="margin-top:8px">Female-headed share: <b>${(headF/POV.length*100).toFixed(0)}%</b> of households.</div>
+      </div>
+    </div>`;
+  document.getElementById('povInterp').innerHTML=`
+    <div class="pcol" style="max-width:780px;margin:0 auto">
+      <div class="ph">Reading the poverty data — start to finish</div>
+      <ul class="psteps">
+        <li><b>Education drives wages:</b> mean wage climbs from $${wByEdu[0].toFixed(1)} (None) to $${wByEdu[3].toFixed(1)} (Tertiary).</li>
+        <li><b>Gender gap:</b> female-headed households earn $${wFem.toFixed(2)}/hr vs $${wMale.toFixed(2)} for male-headed.</li>
+        <li><b>Larger &amp; poorer:</b> the lowest-wage households tend to be the biggest and rely on walking.</li>
+        <li><b>Transport mirrors income:</b> the poor walk or cycle; cars appear only among the top earners.</li>
+      </ul>
+      <div class="fence"><b>Policy read:</b> poverty concentrates in low-education, female-headed, larger households — the levers are schooling, female livelihoods, and affordable transport.</div>
+    </div>`;
+
+  const pal=['#4fd0ff','#33e6c0','#ffb45a','#ff77d9','#5bd08a'];
+  function bars(g,x0,w,baseY,maxH,labels,vals,cols,fmt){const A=(t,a,x)=>g.appendChild(mk(t,a,x));
+    const mx=Math.max(...vals)||1,bw=w/labels.length;
+    A('line',{x1:x0,y1:baseY,x2:x0+w,y2:baseY,class:'vaxis'});
+    labels.forEach((lb,i)=>{const h=vals[i]/mx*maxH,x=x0+i*bw+bw*0.15,bwi=bw*0.7;
+      A('rect',{x:x,y:baseY-h,width:bwi,height:h,fill:cols[i%cols.length],rx:3,opacity:.9});
+      A('text',{x:x+bwi/2,y:baseY-h-8,'text-anchor':'middle',class:'vsub',fill:cols[i%cols.length]},fmt?fmt(vals[i]):vals[i]);
+      A('text',{class:'vsub',x:x+bwi/2,y:baseY+18,'text-anchor':'middle'},lb);});}
+  const VT=(g,x,y,txt)=>g.appendChild(mk('text',{class:'vtitle',x,y,'text-anchor':'middle'},txt));
+  (function(){const g=document.getElementById('povCat');
+    VT(g,215,182,'Education'); bars(g,90,250,430,190,['None','Prim','Sec','Tert'],eduF,pal);
+    VT(g,515,182,'Transportation'); bars(g,375,290,430,190,['Walk','Bike','Moto','Public','Car'],trF,pal);
+    VT(g,815,182,'Head of family'); bars(g,700,230,430,190,['Male','Female'],[headM,headF],['#4fd0ff','#ff77d9']);})();
+  (function(){const g=document.getElementById('povNum');
+    const sizes=[2,3,4,5,6,7,8,9], hhFreq=sizes.map(s=>hhArr.filter(v=>v===s).length);
+    VT(g,300,172,'Household size (people)'); bars(g,120,360,400,180,sizes.map(String),hhFreq,['#33e6c0']);
+    g.appendChild(mk('text',{class:'vsub',x:300,y:434,'text-anchor':'middle'},`mean ${hhS.mean.toFixed(1)} · median ${hhS.median} · SD ${hhS.sd.toFixed(1)}`));
+    const wl=['1–2','2–3','3–4','4–5','5–6','6–7','7–8'], wf=wl.map((_,k)=>POV.filter(r=>Math.min(7,Math.floor(r.w))===k+1).length);
+    VT(g,700,172,'Wage per hour ($)'); bars(g,540,340,400,180,wl,wf,['#4fd0ff']);
+    g.appendChild(mk('text',{class:'vsub',x:710,y:434,'text-anchor':'middle'},`mean $${wS.mean.toFixed(2)} · median $${wS.median.toFixed(1)} · SD $${wS.sd.toFixed(2)}`));})();
+  (function(){const g=document.getElementById('povRel');
+    VT(g,300,172,'Mean wage by education'); bars(g,110,360,440,210,['None','Prim','Sec','Tert'],wByEdu,['#ff5f6d','#ffb45a','#33e6c0','#5bd08a'],v=>'$'+v.toFixed(1));
+    VT(g,715,172,'Mean wage by head of family'); bars(g,590,250,440,210,['Male','Female'],[wMale,wFem],['#4fd0ff','#ff77d9'],v=>'$'+v.toFixed(1));})();
+
+  // ---------- hypothesis testing ----------
+  const htMu=3, htSE=rsdS/Math.sqrt(rn), zStat=(rmean-htMu)/htSE, zCrit=1.96;
+  const wMaleArr=POV.filter(r=>r.g==='M').map(r=>r.w), wFemArr=POV.filter(r=>r.g==='F').map(r=>r.w);
+  const varOf=a=>{const m=avg(a);return a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1);};
+  const nM=wMaleArr.length,nF=wFemArr.length,mMean=avg(wMaleArr),fMean=avg(wFemArr);
+  const sp2=((nM-1)*varOf(wMaleArr)+(nF-1)*varOf(wFemArr))/(nM+nF-2);
+  const tStat=(mMean-fMean)/Math.sqrt(sp2*(1/nM+1/nF)), tDf=nM+nF-2, tCrit=2.048;
+  const OBS=[[35,15],[20,30]], rowT=OBS.map(r=>r[0]+r[1]), colT=[OBS[0][0]+OBS[1][0],OBS[0][1]+OBS[1][1]], tot=rowT[0]+rowT[1];
+  let chi2=0; for(let i=0;i<2;i++)for(let j=0;j<2;j++){const E=rowT[i]*colT[j]/tot;chi2+=(OBS[i][j]-E)**2/E;}
+  const chiCrit=3.84;
+  const grp=eduO.map(e=>POV.filter(r=>r.e===e).map(r=>r.w)), grand=avg(POV.map(r=>r.w)), kG=grp.length, NN=POV.length;
+  let SSB=0,SSW=0; grp.forEach(a=>{const gm=avg(a);SSB+=a.length*(gm-grand)**2;a.forEach(v=>SSW+=(v-gm)**2);});
+  const dfB=kG-1,dfW=NN-kG,MSB=SSB/dfB,MSW=SSW/dfW,Fstat=MSB/MSW,Fcrit=2.98;
+
+  const distPlot=(g,o)=>{const A=(t,a,x)=>g.appendChild(mk(t,a,x));
+    const {L,R,B,H,xmin,xmax,fn,crit,stat,statLabel,tail,title,verdict}=o;
+    const sx=v=>L+(v-xmin)/(xmax-xmin)*(R-L);
+    const xs=[]; let mxy=0; for(let i=0;i<=120;i++){const x=xmin+(xmax-xmin)*i/120,y=Math.max(0,fn(x));xs.push([x,y]);if(y>mxy)mxy=y;}
+    const sy=y=>B-y/mxy*H;
+    if(title)A('text',{class:'vtitle',x:(L+R)/2,y:B-H-24,'text-anchor':'middle'},title);
+    A('line',{x1:L,y1:B,x2:R,y2:B,class:'vaxis'});
+    const shade=(a,b)=>{const ia=xs.filter(p=>p[0]>=a&&p[0]<=b);if(!ia.length)return;
+      const pts=[`${sx(a).toFixed(1)},${B}`]; ia.forEach(p=>pts.push(`${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`)); pts.push(`${sx(b).toFixed(1)},${B}`);
+      A('polygon',{points:pts.join(' '),fill:'var(--outlier)',opacity:.32});};
+    if(tail==='two'){shade(xmin,-crit);shade(crit,xmax);} else shade(crit,xmax);
+    A('polyline',{points:xs.map(p=>`${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`).join(' '),fill:'none',stroke:'var(--bell)','stroke-width':2.5});
+    (tail==='two'?[-crit,crit]:[crit]).forEach(c=>{A('line',{x1:sx(c),y1:sy(fn(c)),x2:sx(c),y2:B,stroke:'var(--warm)','stroke-width':1.6,'stroke-dasharray':'4 3'});
+      A('text',{class:'zlab',x:sx(c),y:B+16,'text-anchor':'middle',fill:'var(--warm)'},(c<0?'−':'')+Math.abs(c));});
+    const sc=Math.max(xmin,Math.min(xmax,stat));
+    A('line',{x1:sx(sc),y1:B,x2:sx(sc),y2:B-H-6,stroke:'var(--gold)','stroke-width':2.5});
+    A('text',{class:'mlabel',x:Math.min(R-40,sx(sc)),y:B-H-12,'text-anchor':'middle',fill:'var(--gold)'},statLabel);
+    if(stat>xmax)A('text',{class:'zlab',x:R-4,y:B-6,'text-anchor':'end',fill:'var(--gold)'},'→');
+    A('text',{class:'vsub',x:(L+R)/2,y:B+42,'text-anchor':'middle',fill:'var(--outlier)'},verdict||'');};
+
+  distPlot(document.getElementById('zTest'),{L:180,R:820,B:420,H:230,xmin:-4,xmax:4,fn:x=>Math.exp(-x*x/2),crit:zCrit,stat:zStat,statLabel:`z = ${zStat.toFixed(2)}`,tail:'two',title:'Standard normal — two-tailed (α = 0.05)',verdict:`|z| = ${Math.abs(zStat).toFixed(2)} > ${zCrit} → reject H₀`});
+  distPlot(document.getElementById('tTest'),{L:180,R:820,B:420,H:230,xmin:-6,xmax:6,fn:x=>Math.exp(-x*x/2.4),crit:tCrit,stat:tStat,statLabel:`t = ${tStat.toFixed(2)}`,tail:'two',title:`t distribution, df = ${tDf}`,verdict:`|t| = ${Math.abs(tStat).toFixed(2)} > ${tCrit.toFixed(2)} → reject H₀`});
+  distPlot(document.getElementById('chiTest'),{L:180,R:820,B:420,H:230,xmin:0,xmax:16,fn:x=>x<=0?0:Math.pow(x,1.5)*Math.exp(-x/2),crit:chiCrit,stat:chi2,statLabel:`χ² = ${chi2.toFixed(2)}`,tail:'right',title:'χ² distribution, df = 1',verdict:`χ² = ${chi2.toFixed(2)} > ${chiCrit} → reject H₀`});
+  distPlot(document.getElementById('fTest'),{L:180,R:820,B:420,H:230,xmin:0,xmax:6,fn:x=>x<=0?0:Math.pow(x,0.8)*Math.exp(-x*0.8),crit:Fcrit,stat:Fstat,statLabel:`F = ${Fstat.toFixed(1)}`,tail:'right',title:`F distribution, df = (${dfB}, ${dfW})`,verdict:`F = ${Fstat.toFixed(1)} > ${Fcrit} → reject H₀`});
+
+  document.getElementById('htIntro').innerHTML=`
+    <div class="pcol" style="max-width:790px;margin:0 auto">
+      <div class="ph">The logic of a hypothesis test</div>
+      <ul class="psteps">
+        <li><b>H₀ (null):</b> "no effect / no difference." &nbsp;<b>H₁ (alternative):</b> what you suspect.</li>
+        <li>Compute a <b>test statistic</b> — how far the data sit from H₀, in standard-error units.</li>
+        <li>Compare it to a <b>critical value</b>, or read its <b>p-value</b>.</li>
+        <li><b>Decide:</b> if it falls in the rejection tail (p &lt; α, usually 0.05) → <b>reject H₀</b>.</li>
+      </ul>
+      <table class="kv" style="margin-top:8px"><tr><th>Test</th><th>Use it when…</th><th>It compares</th></tr>
+        <tr><td>z-test</td><td>σ known / large n</td><td>a mean vs a value</td></tr>
+        <tr><td>t-test</td><td>σ unknown / small n</td><td>two group means</td></tr>
+        <tr><td>χ² test</td><td>categorical data</td><td>association in a table</td></tr>
+        <tr><td>F / ANOVA</td><td>3 + groups</td><td>several group means</td></tr></table>
+    </div>`;
+  document.getElementById('htHow').innerHTML=`
+    <div class="codeGrid">
+      <div class="codeCard"><div class="ct">Z-test (mean vs value)</div><pre class="code"><span class="cm">Stata</span>
+ztest x == 3, sd(1.18)   <span class="cm">* σ known</span>
+ttest x == 3             <span class="cm">* σ unknown</span>
+<span class="cm">Excel</span>
+=Z.TEST(A2:A31, 3, 1.18)   <span class="cm">' p-value</span>
+=(AVERAGE(rng)-3)/(1.18/SQRT(30))</pre></div>
+      <div class="codeCard"><div class="ct">T-test (two groups)</div><pre class="code"><span class="cm">Stata</span>
+ttest wage, by(head)
+<span class="cm">Excel</span>
+=T.TEST(male, female, 2, 2)
+Data ▸ Analysis ▸ t-Test: Two-Sample</pre></div>
+      <div class="codeCard"><div class="ct">Chi-square (association)</div><pre class="code"><span class="cm">Stata</span>
+tabulate pref gender, chi2
+<span class="cm">Excel</span>
+=CHISQ.TEST(observed, expected)
+χ² = SUM((O − E)^2 / E)</pre></div>
+      <div class="codeCard"><div class="ct">F-test / ANOVA (3 + groups)</div><pre class="code"><span class="cm">Stata</span>
+oneway wage edu, tabulate
+anova wage edu
+<span class="cm">Excel</span>
+Data ▸ Analysis ▸ ANOVA: Single Factor
+=F.TEST(grp1, grp2)   <span class="cm">' two-variance F</span></pre></div>
+      <div class="codeCard"><div class="ct">AI prompt</div><pre class="code">Here are my data [ paste ]. Choose and run
+the right test to compare [these groups /
+this mean]. State H0 and H1, the test used,
+the statistic, the p-value, and whether to
+reject H0 at α = 0.05 — in one sentence.</pre></div>
+    </div>`;
+
+  // ---------- case study: microfinance ----------
+  const MF=[
+    {g:'Loan',b:250,a:420},{g:'Loan',b:280,a:460},{g:'Loan',b:220,a:380},{g:'Loan',b:300,a:510},{g:'Loan',b:240,a:400},
+    {g:'Loan',b:260,a:430},{g:'Loan',b:210,a:360},{g:'Loan',b:290,a:480},{g:'Loan',b:230,a:390},{g:'Loan',b:270,a:450},
+    {g:'Loan',b:255,a:415},{g:'Loan',b:245,a:405},{g:'Loan',b:285,a:470},{g:'Loan',b:225,a:375},{g:'Loan',b:265,a:440},
+    {g:'No-loan',b:255,a:290},{g:'No-loan',b:270,a:300},{g:'No-loan',b:230,a:250},{g:'No-loan',b:300,a:330},{g:'No-loan',b:245,a:270},
+    {g:'No-loan',b:260,a:285},{g:'No-loan',b:215,a:235},{g:'No-loan',b:290,a:315},{g:'No-loan',b:235,a:255},{g:'No-loan',b:275,a:300},
+    {g:'No-loan',b:250,a:275},{g:'No-loan',b:240,a:260},{g:'No-loan',b:285,a:310},{g:'No-loan',b:225,a:245},{g:'No-loan',b:265,a:290}
+  ];
+  const mfL=MF.filter(r=>r.g==='Loan'), mfC=MF.filter(r=>r.g==='No-loan');
+  const laA=mfL.map(r=>r.a), caA=mfC.map(r=>r.a);
+  const mL=avg(laA), mC=avg(caA), bL=avg(mfL.map(r=>r.b)), bC=avg(mfC.map(r=>r.b));
+  const gainL=avg(mfL.map(r=>r.a-r.b)), gainC=avg(mfC.map(r=>r.a-r.b)), nL=laA.length, nC=caA.length;
+  const sdA=a=>{const m=avg(a);return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1));};
+  const sdL=sdA(laA), sdC=sdA(caA);
+  const sp2MF=((nL-1)*sdL*sdL+(nC-1)*sdC*sdC)/(nL+nC-2);
+  const tMF=(mL-mC)/Math.sqrt(sp2MF*(1/nL+1/nC)), dfMF=nL+nC-2, tCritMF=2.048;
+
+  document.getElementById('mfIntro').innerHTML=`
+    <div class="pcol" style="max-width:770px;margin:0 auto">
+      <div class="ph">Case Study: Microfinance Impact — did the loan raise income?</div>
+      <div class="fence">30 comparable households, two groups: <b>15 received a microfinance loan</b> (treatment) and <b>15 did not</b> (control). Monthly income was recorded <b>before</b> and again <b>one year after</b>.</div>
+      <table class="kv" style="margin-top:12px"><tr><th>Variable</th><th>What it records</th><th>Scale</th></tr>
+        <tr><td>Group</td><td>Loan vs No-loan (treatment)</td><td>Nominal</td></tr>
+        <tr><td>Income (before)</td><td>Monthly $ at baseline</td><td>Continuous · ratio</td></tr>
+        <tr><td>Income (after)</td><td>Monthly $ one year later</td><td>Continuous · ratio</td></tr></table>
+      <div class="fence" style="margin-top:10px">Question: after a year, do loan households earn more? We compare the groups' <b>after</b> income with a <b>two-sample t-test</b>.</div>
+    </div>`;
+  document.getElementById('mfRaw').innerHTML=`
+    <div class="pcol"><div class="ph">Household data — income before &amp; after ($/month)</div>
+      <table class="vt"><thead><tr><th>#</th><th>Group</th><th>Before</th><th>After</th><th>Gain</th></tr></thead>
+      <tbody>${MF.map((r,i)=>`<tr><td>${i+1}</td><td>${r.g}</td><td>$${r.b}</td><td>$${r.a}</td><td>+$${r.a-r.b}</td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById('mfStats').innerHTML=`
+    <div class="pwrap">
+      <div class="pcol">
+        <div class="ph">Group summary ($/month)</div>
+        <table class="kv"><tr><th>Group</th><th>n</th><th>Before</th><th>After</th><th>Gain</th></tr>
+          <tr><td>Loan</td><td>${nL}</td><td>$${bL.toFixed(0)}</td><td>$${mL.toFixed(0)}</td><td>+$${gainL.toFixed(0)}</td></tr>
+          <tr><td>No-loan</td><td>${nC}</td><td>$${bC.toFixed(0)}</td><td>$${mC.toFixed(0)}</td><td>+$${gainC.toFixed(0)}</td></tr></table>
+        <div class="fence" style="margin-top:10px">Baselines almost equal ($${bL.toFixed(0)} vs $${bC.toFixed(0)}) → the after-gap reflects the <b>loan's effect</b>, not pre-existing differences.</div>
+      </div>
+      <div class="pcol">
+        <div class="ph">Two-sample t-test (after income)</div>
+        <table class="kv"><tr><th>Quantity</th><th>Value</th></tr>
+          <tr><td>Difference in means</td><td>$${(mL-mC).toFixed(0)}</td></tr>
+          <tr><td>SD (Loan / No-loan)</td><td>${sdL.toFixed(0)} / ${sdC.toFixed(0)}</td></tr>
+          <tr><td>t statistic</td><td>${tMF.toFixed(2)}</td></tr>
+          <tr><td>df</td><td>${dfMF}</td></tr>
+          <tr><td>Critical t (α = .05)</td><td>±${tCritMF}</td></tr>
+          <tr><td>Decision</td><td>Reject H₀</td></tr></table>
+        <div class="fence" style="margin-top:10px">t = ${tMF.toFixed(1)} ≫ ${tCritMF} (p &lt; 0.001) → the income difference is <b>real, not chance</b>.</div>
+      </div>
+    </div>`;
+  document.getElementById('mfInterp').innerHTML=`
+    <div class="pcol" style="max-width:790px;margin:0 auto">
+      <div class="ph">Reading the microfinance result — start to finish</div>
+      <ul class="psteps">
+        <li><b>Comparable start:</b> both groups earned ~$${bL.toFixed(0)}/month before the program.</li>
+        <li><b>Clear gap after a year:</b> loan households earn $${mL.toFixed(0)} vs $${mC.toFixed(0)} — about <b>$${(mL-mC).toFixed(0)} more</b>.</li>
+        <li><b>Effect (gain):</b> loan +$${gainL.toFixed(0)} vs control +$${gainC.toFixed(0)} → the loan added ≈ <b>$${(gainL-gainC).toFixed(0)}/month</b>.</li>
+        <li><b>Significant:</b> t = ${tMF.toFixed(1)}, df ${dfMF} (p &lt; 0.001) → not a fluke. (With two groups, ANOVA's F = t² gives the same verdict.)</li>
+      </ul>
+      <div class="fence"><b>Read:</b> microfinance shows a strong positive income effect here. Caveats: keep the groups truly comparable, watch the repayment burden, and check whether the gains persist beyond one year.</div>
+    </div>`;
+  distPlot(document.getElementById('mfTest'),{L:180,R:820,B:420,H:230,xmin:-12,xmax:12,fn:x=>Math.exp(-x*x/2.4),crit:tCritMF,stat:tMF,statLabel:`t = ${tMF.toFixed(1)}`,tail:'two',title:`t distribution, df = ${dfMF}`,verdict:`|t| = ${tMF.toFixed(1)} > ${tCritMF} → reject H₀ (loan raised income)`});
+  (function(){const g=document.getElementById('mfBar'),A=(t,a,x)=>g.appendChild(mk(t,a,x));
+    VT(g,500,150,'Mean monthly income ($) — before vs after');
+    const baseY=445,maxH=250,mx=Math.max(mL,mC,bL,bC);
+    A('line',{x1:150,y1:baseY,x2:850,y2:baseY,class:'vaxis'});
+    [{lbl:'Loan',bef:bL,aft:mL,cx:330},{lbl:'No-loan',bef:bC,aft:mC,cx:650}].forEach(gr=>{const bw=80;
+      [['Before',gr.bef,'#4fd0ff',gr.cx-bw-6],['After',gr.aft,'#5bd08a',gr.cx+6]].forEach(d=>{const h=d[1]/mx*maxH,x=d[3];
+        A('rect',{x:x,y:baseY-h,width:bw,height:h,fill:d[2],rx:4,opacity:.9});
+        A('text',{x:x+bw/2,y:baseY-h-8,'text-anchor':'middle',class:'vsub',fill:d[2]},'$'+Math.round(d[1]));});
+      A('text',{class:'mlabel',x:gr.cx,y:baseY+22,'text-anchor':'middle',fill:'var(--ink)'},gr.lbl);});
+    A('rect',{x:180,y:170,width:12,height:12,fill:'#4fd0ff',rx:2});A('text',{class:'vsub',x:198,y:180},'Before');
+    A('rect',{x:180,y:190,width:12,height:12,fill:'#5bd08a',rx:2});A('text',{class:'vsub',x:198,y:200},'After');})();
+
+  // ---------- case study: health (ANOVA) ----------
+  const HA=[12,9,11,14,10,8,13,10,12,11], HB=[16,18,15,19,17,14,20,16,15,18], HC=[6,8,5,9,7,4,8,6,7,5];
+  const hmA=avg(HA),hmB=avg(HB),hmC=avg(HC), HG=[HA,HB,HC], hGrand=avg([...HA,...HB,...HC]);
+  let hSSB=0,hSSW=0; HG.forEach(a=>{const m=avg(a);hSSB+=a.length*(m-hGrand)**2;a.forEach(v=>hSSW+=(v-m)**2);});
+  const hdfB=2,hdfW=27,hMSB=hSSB/hdfB,hMSW=hSSW/hdfW,hF=hMSB/hMSW,hFcrit=3.35;
+  const HROWS=[...HA.map(v=>['Drug A',v]),...HB.map(v=>['Drug B',v]),...HC.map(v=>['Drug C',v])];
+
+  document.getElementById('hIntro').innerHTML=`
+    <div class="pcol" style="max-width:770px;margin:0 auto">
+      <div class="ph">Case Study: Health — do three treatments differ? (ANOVA)</div>
+      <div class="fence">A trial of <b>three blood-pressure drugs</b> (A, B, C), 10 patients each. Outcome: reduction in systolic blood pressure (mmHg) after 8 weeks.</div>
+      <table class="kv" style="margin-top:12px"><tr><th>Variable</th><th>What it records</th><th>Scale</th></tr>
+        <tr><td>Treatment</td><td>Drug A / B / C</td><td>Nominal (3 groups)</td></tr>
+        <tr><td>BP reduction</td><td>mmHg after 8 weeks</td><td>Continuous · ratio</td></tr></table>
+      <div class="fence" style="margin-top:10px">Two groups → a t-test. Three or more → <b>one-way ANOVA</b>, whose F-test asks: is <i>any</i> drug's mean reduction different from the rest?</div>
+    </div>`;
+  document.getElementById('hRaw').innerHTML=`
+    <div class="pcol"><div class="ph">Trial data — BP reduction (mmHg), 30 patients</div>
+      <table class="vt"><thead><tr><th>#</th><th>Treatment</th><th>Reduction</th></tr></thead>
+      <tbody>${HROWS.map((r,i)=>`<tr><td>${i+1}</td><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById('hAnova').innerHTML=`
+    <div class="pcol" style="max-width:680px;margin:0 auto">
+      <div class="ph">One-way ANOVA table — reduction by drug</div>
+      <table class="kv"><tr><th>Source</th><th>SS</th><th>df</th><th>MS</th><th>F</th></tr>
+        <tr><td>Between groups</td><td>${hSSB.toFixed(1)}</td><td>${hdfB}</td><td>${hMSB.toFixed(1)}</td><td>${hF.toFixed(1)}</td></tr>
+        <tr><td>Within groups</td><td>${hSSW.toFixed(1)}</td><td>${hdfW}</td><td>${hMSW.toFixed(1)}</td><td>—</td></tr>
+        <tr><td>Total</td><td>${(hSSB+hSSW).toFixed(1)}</td><td>${hdfB+hdfW}</td><td>—</td><td>—</td></tr></table>
+      <div class="fence" style="margin-top:10px">F = MS<sub>between</sub> ⁄ MS<sub>within</sub> = ${hMSB.toFixed(1)} ⁄ ${hMSW.toFixed(1)} = <b>${hF.toFixed(1)}</b>. Critical F(${hdfB},${hdfW}) ≈ ${hFcrit} → <b>reject H₀</b>: the drugs differ.</div>
+      <div class="fence" style="margin-top:8px">Means: A ${hmA.toFixed(1)} · B ${hmB.toFixed(1)} · C ${hmC.toFixed(1)} mmHg. A follow-up (post-hoc) test shows <b>which</b> pairs differ.</div>
+    </div>`;
+  document.getElementById('hInterp').innerHTML=`
+    <div class="pcol" style="max-width:790px;margin:0 auto">
+      <div class="ph">Reading the health result — start to finish</div>
+      <ul class="psteps">
+        <li><b>Big between-group gap:</b> mean reduction is A ${hmA.toFixed(1)}, B ${hmB.toFixed(1)}, C ${hmC.toFixed(1)} mmHg.</li>
+        <li><b>Small within-group scatter:</b> patients on the same drug respond similarly, so the gaps aren't just noise.</li>
+        <li><b>F = ${hF.toFixed(1)} ≫ ${hFcrit}</b> (p &lt; 0.001) → reject "all drugs equal": at least one differs.</li>
+        <li><b>Best performer:</b> Drug B lowers BP most; a post-hoc test (e.g. Tukey) confirms which pairs differ.</li>
+      </ul>
+      <div class="fence"><b>Read:</b> the three treatments are not equivalent — Drug B gives the largest reduction. ANOVA flags <i>that</i> a difference exists; pair it with a post-hoc test and clinical judgement before prescribing.</div>
+    </div>`;
+  distPlot(document.getElementById('hF'),{L:180,R:820,B:420,H:230,xmin:0,xmax:8,fn:x=>x<=0?0:Math.pow(x,0.8)*Math.exp(-x*0.75),crit:hFcrit,stat:hF,statLabel:`F = ${hF.toFixed(1)}`,tail:'right',title:`F distribution, df = (${hdfB}, ${hdfW})`,verdict:`F = ${hF.toFixed(1)} > ${hFcrit} → reject H₀ (drugs differ)`});
+  (function(){const g=document.getElementById('hBar'),A=(t,a,x)=>g.appendChild(mk(t,a,x));
+    VT(g,500,150,'BP reduction by drug (mmHg) — bars are group means, dots are patients');
+    const baseY=455,maxH=280,mx=Math.max(...HA,...HB,...HC)+2, sy=v=>baseY-v/mx*maxH;
+    A('line',{x1:150,y1:baseY,x2:850,y2:baseY,class:'vaxis'});
+    [{lbl:'Drug A',arr:HA,m:hmA,cx:270,col:'#4fd0ff'},{lbl:'Drug B',arr:HB,m:hmB,cx:500,col:'#5bd08a'},{lbl:'Drug C',arr:HC,m:hmC,cx:730,col:'#ffb45a'}].forEach(gr=>{const bw=120;
+      A('rect',{x:gr.cx-bw/2,y:sy(gr.m),width:bw,height:baseY-sy(gr.m),fill:gr.col,rx:4,opacity:.2});
+      A('line',{x1:gr.cx-bw/2,y1:sy(gr.m),x2:gr.cx+bw/2,y2:sy(gr.m),stroke:gr.col,'stroke-width':2.5});
+      gr.arr.forEach((v,i)=>A('circle',{cx:gr.cx-bw/2+12+i*((bw-24)/9),cy:sy(v),r:4,fill:gr.col,opacity:.9,filter:`drop-shadow(0 0 4px ${gr.col})`}));
+      A('text',{x:gr.cx,y:sy(gr.m)-10,'text-anchor':'middle',class:'mlabel',fill:gr.col},gr.m.toFixed(1));
+      A('text',{class:'vsub',x:gr.cx,y:baseY+22,'text-anchor':'middle',fill:'var(--ink)'},gr.lbl);});})();
+
+  // ---------- how-to cheat sheets (every tool) ----------
+  (function(){
+    const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const H=['Task','Excel','Stata','EViews','SPSS','Python (pandas/scipy)','R'];
+    const cheat=(title,rows,ai)=>`<div class="pcol"><div class="ph">${title}</div>
+      <div class="tblScroll"><table class="cheat"><thead><tr>${H.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r=>`<tr><td>${esc(r[0])}</td>${r.slice(1).map(c=>`<td><code>${esc(c)}</code></td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      <div class="fence" style="margin-top:10px"><b>AI prompt:</b> ${ai}</div></div>`;
+
+    document.getElementById('chDesc').innerHTML=cheat('Descriptive statistics — every tool',[
+      ['Mean','=AVERAGE(A:A)','summarize x','@mean(x)','DESCRIPTIVES x.','df.x.mean()','mean(x)'],
+      ['Median','=MEDIAN(A:A)','summarize x, detail','@median(x)','FREQUENCIES x /STATS=MEDIAN.','df.x.median()','median(x)'],
+      ['Mode','=MODE.SNGL(A:A)','egen m=mode(x)','—','FREQUENCIES x /STATS=MODE.','df.x.mode()[0]','names(which.max(table(x)))'],
+      ['Range','=MAX(A:A)-MIN(A:A)','summarize x','@max(x)-@min(x)','DESCRIPTIVES x /STATS=RANGE.','df.x.max()-df.x.min()','diff(range(x))'],
+      ['Variance','=VAR.S(A:A)','summarize x','@var(x)','DESCRIPTIVES x /STATS=VARIANCE.','df.x.var()','var(x)'],
+      ['Std dev','=STDEV.S(A:A)','summarize x','@stdev(x)','DESCRIPTIVES x /STATS=STDDEV.','df.x.std()','sd(x)'],
+      ['Quartiles / IQR','=QUARTILE.INC(A:A,1)','summarize x, detail','@quantile(x,0.25)','EXAMINE x.','df.x.quantile([.25,.75])','quantile(x)'],
+      ['Skewness','=SKEW(A:A)','summarize x, detail','@skew(x)','DESCRIPTIVES x /STATS=SKEWNESS.','df.x.skew()','e1071::skewness(x)'],
+      ['Everything','Data ▸ Analysis ▸ Descriptive Stats','summarize x, detail','x.stats','DESCRIPTIVES x /STATS=ALL.','df.describe()','summary(x)'],
+    ],'"Give the mean, median, mode, range, variance, SD and quartiles of this column: [paste]."');
+
+    document.getElementById('chChart').innerHTML=cheat('Charts — every tool',[
+      ['Bar','Insert ▸ Column','graph bar (mean) y, over(cat)','cat.bar','GRAPH /BAR.','df.plot.bar()','barplot(table(cat))'],
+      ['Pie','Insert ▸ Pie','graph pie, over(cat)','—','GRAPH /PIE.','df.plot.pie()','pie(table(cat))'],
+      ['Histogram','Insert ▸ Statistic ▸ Histogram','histogram x','x.hist','GRAPH /HISTOGRAM=x.','df.x.hist()','hist(x)'],
+      ['Boxplot','Insert ▸ Box & Whisker','graph box x','x.boxplot','EXAMINE x /PLOT=BOXPLOT.','df.boxplot(column="x")','boxplot(x)'],
+      ['Scatter','Insert ▸ Scatter (X Y)','scatter y x','scat x y','GRAPH /SCATTERPLOT(y x).','df.plot.scatter("x","y")','plot(x,y)'],
+      ['Line / time series','Insert ▸ Line','line y t','t.line y','GRAPH /LINE(y).','df.plot.line()','plot(t,y,type="l")'],
+    ],'"Plot a [bar / histogram / scatter] of this data and describe what it shows."');
+
+    document.getElementById('chOut').innerHTML=cheat('Outlier detection — every tool',[
+      ['IQR fences','flag x<Q1-1.5*IQR or x>Q3+1.5*IQR','egen q=pctile(x),p(25); …','@quantile(x,.25/.75)','EXAMINE x /PLOT=BOXPLOT.','q1,q3=df.x.quantile([.25,.75])','boxplot.stats(x)$out'],
+      ['Z-score','=(x-AVERAGE)/STDEV ; |z|>3','egen z=std(x)','(x-@mean(x))/@stdev(x)','DESCRIPTIVES x /SAVE.','abs(scipy.stats.zscore(x))>3','abs(scale(x))>3'],
+      ['Modified Z (MAD)','0.6745*(x-MEDIAN)/MAD ; >3.5','—','—','—','from scipy.stats import median_abs_deviation','mad(x)'],
+      ['Boxplot flag','Box & Whisker marks points','graph box x','x.boxplot','EXAMINE /PLOT=BOXPLOT.','df.boxplot()','boxplot(x)$out'],
+    ],'"Using the IQR rule (and z-scores), list the outliers in this column and report the fences."');
+
+    document.getElementById('chReg').innerHTML=cheat('Correlation & regression — every tool',[
+      ['Correlation r','=CORREL(A:A,B:B)','correlate x y','cor x y','CORRELATIONS x y.','df[["x","y"]].corr()','cor(x,y)'],
+      ['Simple regression','Data ▸ Regression','regress y x','ls y c x','REGRESSION /DEP y /METHOD=ENTER x.','smf.ols("y~x",df).fit()','lm(y~x)'],
+      ['Multiple regression','Data ▸ Regression (many X)','regress y x1 x2','ls y c x1 x2','REGRESSION … x1 x2.','smf.ols("y~x1+x2",df).fit()','lm(y~x1+x2)'],
+      ['R² & coefficients','=RSQ(…) ; LINEST','e(r2) ; _b[x]','eq.@r2','(regression output)','.rsquared ; .params','summary(lm(y~x))'],
+    ],'"Fit y ~ x (add controls if needed); report r, slope, intercept, R² and p-values, and interpret in one sentence."');
+
+    document.getElementById('chTest').innerHTML=cheat('Hypothesis tests — every tool',[
+      ['One-sample t','=T.TEST or manual','ttest x==mu','x.teststat(mean=mu)','T-TEST /TESTVAL=mu /VAR=x.','scipy.stats.ttest_1samp(x,mu)','t.test(x,mu=mu)'],
+      ['Two-sample t','=T.TEST(a,b,2,2)','ttest y, by(g)','(test equality of means)','T-TEST GROUPS=g /VAR=y.','scipy.stats.ttest_ind(a,b)','t.test(a,b)'],
+      ['Paired t','=T.TEST(a,b,2,1)','ttest a==b','—','T-TEST PAIRS=a WITH b.','scipy.stats.ttest_rel(a,b)','t.test(a,b,paired=TRUE)'],
+      ['Z-test','=Z.TEST(A:A,mu,sd)','ztest x==mu, sd(sd)','—','(large-sample t-test)','statsmodels …ztest(x,value=mu)','BSDA::z.test(x,mu=mu,sigma.x=sd)'],
+      ['Chi-square','=CHISQ.TEST(obs,exp)','tabulate a b, chi2','—','CROSSTABS /STATISTICS=CHISQ.','scipy.stats.chi2_contingency(tab)','chisq.test(table(a,b))'],
+      ['One-way ANOVA (F)','Data ▸ ANOVA: Single Factor','oneway y g','(equality of means)','ONEWAY y BY g.','scipy.stats.f_oneway(g1,g2,g3)','summary(aov(y~g))'],
+    ],'"Choose and run the right test to compare [groups / a mean]; state H0/H1, the statistic, the p-value, and the decision at α = 0.05."');
+  })();
+
+  // ---------- case study: Cambodia–Thailand (qualitative) ----------
+  document.getElementById('ctIntro').innerHTML=`
+    <div class="pcol" style="max-width:780px;margin:0 auto">
+      <div class="ph">Case Study: Cambodia–Thailand — a qualitative comparison</div>
+      <div class="fence">Not all data is numeric. <b>Qualitative data</b> — interviews, documents, news, expert views — is analysed by <b>coding</b> it into themes, then comparing patterns. Question: across <b>politics, economics and culture</b>, where does each country hold a comparative advantage in the bilateral relationship?</div>
+      <table class="kv" style="margin-top:12px"><tr><th>Step</th><th>What we do</th></tr>
+        <tr><td>1 · Gather</td><td>policy papers, news, academic articles, expert interviews</td></tr>
+        <tr><td>2 · Code</td><td>tag passages with themes (diplomacy, trade, heritage…)</td></tr>
+        <tr><td>3 · Group</td><td>sort themes under politics / economics / culture</td></tr>
+        <tr><td>4 · Analyse</td><td>build a <b>SWOT</b> for each country — strengths, weaknesses, opportunities, threats</td></tr>
+        <tr><td>5 · Interpret</td><td>weigh each side's comparative advantage</td></tr></table>
+      <div class="fence" style="margin-top:10px">A balanced, illustrative teaching example — a neutral comparison, not a political stance.</div>
+    </div>`;
+  document.getElementById('ctData').innerHTML=`
+    <div class="pcol" style="max-width:840px;margin:0 auto">
+      <div class="ph">The qualitative data — coded themes</div>
+      <div class="tblScroll"><table class="vt"><thead><tr><th>Dimension</th><th>Theme</th><th>Illustrative evidence</th></tr></thead><tbody>
+        <tr><td>Politics</td><td>ASEAN diplomacy</td><td>Both active in ASEAN; Cambodia chaired ASEAN (2022); Thailand a founding, higher-profile member.</td></tr>
+        <tr><td>Politics</td><td>Border governance</td><td>Periodic border / heritage tensions (e.g. Preah Vihear) call for joint mechanisms and dialogue.</td></tr>
+        <tr><td>Economics</td><td>Trade & investment</td><td>Thailand a major trade partner and investor; cross-border trade growing.</td></tr>
+        <tr><td>Economics</td><td>Tourism & migration</td><td>Shared tourism circuits; many Cambodian workers employed in Thailand.</td></tr>
+        <tr><td>Culture</td><td>Shared heritage</td><td>Common Buddhist roots, classical arts and cuisine; overlapping Khmer–Thai influences.</td></tr>
+        <tr><td>Culture</td><td>Soft power & arts</td><td>Thailand's global media / tourism brand; Cambodia's Angkor heritage as a world icon.</td></tr>
+      </tbody></table></div>
+      <div class="fence" style="margin-top:10px">Coding turns free text into comparable categories — the first step of qualitative analysis.</div>
+    </div>`;
+  document.getElementById('ctMatrix').innerHTML=`
+    <div class="pcol" style="max-width:860px;margin:0 auto">
+      <div class="ph">Comparative matrix — relative strengths</div>
+      <div class="tblScroll"><table class="vt"><thead><tr><th>Dimension</th><th>Cambodia — relative strength</th><th>Thailand — relative strength</th></tr></thead><tbody>
+        <tr><td>Politics</td><td>ASEAN agility; strategic partnerships</td><td>Broader diplomatic weight; stronger institutions</td></tr>
+        <tr><td>Economics</td><td>Lower labour cost; young workforce; growth headroom</td><td>Larger, diversified economy; capital & industry</td></tr>
+        <tr><td>Culture</td><td>Angkor Wat — iconic world-heritage depth</td><td>Global soft-power reach; tourism branding</td></tr>
+      </tbody></table></div>
+      <div class="fence" style="margin-top:10px">Each side leads on different fronts — the strengths are largely <b>complementary</b>, not zero-sum.</div>
+    </div>`;
+  document.getElementById('ctInterp').innerHTML=`
+    <div class="pcol" style="max-width:800px;margin:0 auto">
+      <div class="ph">Comparative advantage — reading the comparison</div>
+      <ul class="psteps">
+        <li><b>Politics:</b> Thailand carries more diplomatic weight; Cambodia leverages ASEAN and partnerships. Joint border & heritage governance benefits both.</li>
+        <li><b>Economics:</b> complementary — Thailand's capital and industry pair with Cambodia's cost-competitive, young labour; shared value chains and tourism circuits are win–win.</li>
+        <li><b>Culture:</b> deep shared roots; Thailand's soft-power reach and Cambodia's Angkor heritage are each distinctive assets — exchange over rivalry.</li>
+      </ul>
+      <div class="fence"><b>Bottom line:</b> comparative advantage sits with different countries on different fronts, so the relationship is most productive when strengths are <b>combined</b>, and sensitive issues are handled through dialogue.</div>
+    </div>`;
+  (function(){const g=document.getElementById('ctBar'),A=(t,a,x)=>g.appendChild(mk(t,a,x));
+    VT(g,500,150,'Coded theme frequency — mentions across sources (illustrative)');
+    const th=[['ASEAN',8,'#4fd0ff'],['Border',11,'#4fd0ff'],['Trade',15,'#5bd08a'],['Tourism',12,'#5bd08a'],['Heritage',10,'#ffb45a'],['Soft power',7,'#ffb45a']];
+    const baseY=430,maxH=250,mx=Math.max(...th.map(t=>t[1]))+1,x0=175,bw=90,gap=20;
+    A('line',{x1:150,y1:baseY,x2:850,y2:baseY,class:'vaxis'});
+    th.forEach((t,i)=>{const x=x0+i*(bw+gap),h=t[1]/mx*maxH;
+      A('rect',{x:x,y:baseY-h,width:bw,height:h,fill:t[2],rx:4,opacity:.9});
+      A('text',{x:x+bw/2,y:baseY-h-8,'text-anchor':'middle',class:'vsub',fill:t[2]},t[1]);
+      A('text',{class:'vsub',x:x+bw/2,y:baseY+18,'text-anchor':'middle'},t[0]);});
+    [['Politics','#4fd0ff'],['Economics','#5bd08a'],['Culture','#ffb45a']].forEach((l,i)=>{const lx=300+i*160;
+      A('rect',{x:lx,y:172,width:12,height:12,fill:l[1],rx:2});A('text',{class:'vsub',x:lx+18,y:182},l[0]);});})();
+
+  // ---------- SWOT panels ----------
+  const swot=(who,note,s,w,o,t)=>`<div class="pcol" style="max-width:860px;margin:0 auto"><div class="ph">SWOT — ${who}</div>
+    <div class="swot">
+      <div class="q s"><h4>Strengths</h4><ul>${s.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+      <div class="q w"><h4>Weaknesses</h4><ul>${w.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+      <div class="q o"><h4>Opportunities</h4><ul>${o.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+      <div class="q t"><h4>Threats</h4><ul>${t.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+    </div>
+    <div class="fence" style="margin-top:10px">${note}</div></div>`;
+  document.getElementById('swotKh').innerHTML=swot('Cambodia',
+    'Strengths &amp; weaknesses are <b>internal</b>; opportunities &amp; threats are <b>external</b>. Illustrative and balanced.',
+    ['Young, cost-competitive workforce','Angkor Wat — world-heritage tourism icon','Active ASEAN member; strategic partnerships','Fast growth in garments, tourism, construction'],
+    ['Smaller, less diversified economy','Lower incomes; infrastructure &amp; skills gaps','Reliance on external investment &amp; a few sectors','Developing institutional capacity'],
+    ['Regional value chains &amp; inbound investment','Cross-border tourism circuits &amp; trade','ASEAN integration and connectivity','Cultural exchange on shared heritage'],
+    ['Border / heritage tensions with neighbours','Competition for investment &amp; tourists','Global economic &amp; climate shocks','Over-reliance on key export markets']);
+  document.getElementById('swotTh').innerHTML=swot('Thailand',
+    'The mirror comparison — many of Thailand&#39;s strengths meet Cambodia&#39;s opportunities, which is why the two are complementary.',
+    ['Larger, diversified economy; industrial base','Capital, technology &amp; infrastructure','Strong soft power — tourism, media, cuisine','Greater diplomatic weight; mature institutions'],
+    ['Ageing population; rising labour costs','Periodic domestic political instability','Middle-income-trap &amp; regional inequality','Heavy tourism dependence'],
+    ['Lead regional value chains; invest in neighbours','Cross-border tourism &amp; labour markets','ASEAN connectivity &amp; trade','Growing soft-power / cultural exports'],
+    ['Border / heritage disputes','Regional competition (e.g. Vietnam)','Global volatility &amp; tourism shocks','Demographic decline']);
+
+  // ---------- shape panels ----------
+  function skewPath(cx,baseY,w,h,skew){const pk=cx-skew*(w*0.11);
+    const wL=skew>0?w*0.12:(skew<0?w*0.24:w*0.16),wR=skew>0?w*0.24:(skew<0?w*0.12:w*0.16);
+    const x0=cx-w*0.5,x1=cx+w*0.5,pts=[],N=44;
+    for(let i=0;i<=N;i++){const x=x0+(x1-x0)*i/N,s=x<pk?wL:wR;pts.push({x,y:baseY-h*Math.exp(-((x-pk)**2)/(2*s*s))});}
+    pts[0].y=baseY;pts[N].y=baseY;return smooth(pts);}
+  (function(){const host=document.getElementById('shapeL'),baseY=402,w=236,h=150;
+    [{cx:206,skew:-1,t:'Negative — left-skewed',r:'Mean < Median'},
+     {cx:500,skew:0,t:'Symmetric',r:'Mean = Median'},
+     {cx:794,skew:1,t:'Positive — right-skewed',r:'Mean > Median',hot:1}].forEach(p=>{
+      const g=mk('g',{class:'panel'+(p.hot?' hot':'')});
+      g.appendChild(mk('line',{x1:p.cx-w/2,y1:baseY,x2:p.cx+w/2,y2:baseY,stroke:'#3a4570','stroke-width':1}));
+      g.appendChild(mk('path',{class:'panelCurve',d:skewPath(p.cx,baseY,w,h,p.skew),'stroke-width':2.5}));
+      const pk=p.cx-p.skew*(w*0.11),medX=pk+p.skew*(w*0.05),meanX=pk+p.skew*(w*0.16);
+      g.appendChild(mk('line',{x1:medX,y1:baseY,x2:medX,y2:baseY-h*0.84,stroke:'var(--teal)','stroke-width':1.6,'stroke-dasharray':'4 3'}));
+      g.appendChild(mk('line',{x1:meanX,y1:baseY,x2:meanX,y2:baseY-h*0.92,stroke:'var(--gold)','stroke-width':1.6,'stroke-dasharray':'4 3'}));
+      g.appendChild(mk('text',{class:'panelTitle',x:p.cx,y:baseY+24,'text-anchor':'middle'},p.t));
+      g.appendChild(mk('text',{class:'panelRule',x:p.cx,y:baseY+42,'text-anchor':'middle'},p.r));
+      host.appendChild(g);});})();
+
+  // ---------- formula cards ----------
+  const FORMS={
+    var:`<div class="eq">σ<sup>2</sup> = <span class="muted">Σ ( x<sub>i</sub> − x̄ )<sup>2</sup> ⁄ n</span></div><div class="work">= ( <b>${f(sumsq)}</b> ) ⁄ ${n} ≈ <b>${variance.toFixed(2)}</b></div><div class="note">The outlier alone adds <b>${(OUT-mean).toFixed(1)}² ≈ ${outSq.toFixed(0)}</b> of that ${f(sumsq)}.</div>`,
+    cv:`<div class="eq">CV = <span class="muted">( σ ⁄ x̄ ) × 100%</span></div><div class="work">= ( <b>${f(std)}</b> ⁄ ${f(mean)} ) × 100 ≈ <b>${cv.toFixed(0)}%</b></div><div class="note">Spread as a share of the mean — unit-free.</div>`,
+    z:`<div class="eq">z = <span class="muted">( x − x̄ ) ⁄ σ</span></div><div class="work">outlier: ( ${OUT} − ${f(mean)} ) ⁄ ${f(std)} ≈ <b>${zOut.toFixed(1)}</b></div><div class="note">About <b>${zOut.toFixed(1)}σ</b> above the mean.</div>`,
+    shape:`<div class="eq" style="font-size:.8em">Mean vs Median</div><div class="work" style="line-height:1.7">Mean &lt; Median → left-skewed<br>Mean = Median → symmetric<br>Mean &gt; Median → right-skewed</div><div class="note">Here <b>${f(mean)} &gt; ${f(median)}</b> → right-skewed.</div>`,
+    outIntro:`<div class="eq" style="font-size:.82em">What is an outlier?</div><div class="work">A value that sits far from the rest of the data — like <b>${OUT}</b> here.</div><div class="note">Three rules can flag them: IQR · Z-score · Modified Z.</div>`,
+    iqr:`<div class="eq">IQR = <span class="muted">Q3 − Q1</span> = <b>${f(IQR)}</b></div><div class="work">flag if x &lt; Q1−1.5·IQR (=${f(LF)}) or x &gt; Q3+1.5·IQR (=${f(UF)})</div><div class="note"><b>${OUT} &gt; ${f(UF)}</b> → outlier.</div>`,
+    zmethod:`<div class="eq">z = <span class="muted">( x − x̄ ) ⁄ σ</span></div><div class="work">flag if <b>|z| &gt; 3</b></div><div class="note">outlier z ≈ <b>${zOut.toFixed(1)} &gt; 3</b> → flagged.</div>`,
+    mad:`<div class="eq" style="font-size:.82em">M<sub>i</sub> = 0.6745 ( x<sub>i</sub> − med ) ⁄ MAD</div><div class="work">MAD = <b>${f(MAD)}</b> · flag if <b>|M| &gt; 3.5</b></div><div class="note">outlier M ≈ <b>${modZ.toFixed(1)}</b> → flagged.</div>`
+  };
+
+  FORMS.corr=`<div class="eq">r = <span class="muted">Σ(x−x̄)(y−ȳ) ⁄ √(Σ(x−x̄)²·Σ(y−ȳ)²)</span></div><div class="work">= <b>${Sxy.toFixed(0)}</b> ⁄ √(${Sxx.toFixed(0)}·${Syy.toFixed(0)}) ≈ <b>${rC.toFixed(3)}</b></div><div class="note">+1 perfect ↑ · 0 none · −1 perfect ↓</div>`;
+  FORMS.reg=`<div class="eq">ŷ = <span class="muted">b₀ + b₁x</span></div><div class="work">b₁ = S<sub>xy</sub>⁄S<sub>xx</sub> ≈ <b>${b1.toFixed(2)}</b> &middot; b₀ = ȳ − b₁x̄ ≈ <b>${b0.toFixed(2)}</b></div><div class="note">R² = r² ≈ <b>${R2.toFixed(2)}</b> — share of variation explained.</div>`;
+
+  FORMS.ztest=`<div class="eq">z = <span class="muted">(x̄ − μ₀) ⁄ (σ⁄√n)</span></div><div class="work">= (${rmean.toFixed(2)} − ${htMu}) ⁄ (${rsdS.toFixed(2)}⁄√${rn}) ≈ <b>${zStat.toFixed(2)}</b></div><div class="note">Two-tailed — reject if |z| &gt; 1.96.</div>`;
+  FORMS.ttest=`<div class="eq">t = <span class="muted">(x̄₁ − x̄₂) ⁄ √(s²<sub>p</sub>(1⁄n₁+1⁄n₂))</span></div><div class="work">male $${mMean.toFixed(2)} vs female $${fMean.toFixed(2)} → t ≈ <b>${tStat.toFixed(2)}</b>, df ${tDf}</div><div class="note">Reject if |t| &gt; ${tCrit.toFixed(2)}.</div>`;
+  FORMS.chitest=`<div class="eq">χ² = <span class="muted">Σ (O − E)² ⁄ E</span></div><div class="work">2×2 table → χ² ≈ <b>${chi2.toFixed(2)}</b>, df 1</div><div class="note">Reject if χ² &gt; 3.84.</div>`;
+  FORMS.ftest=`<div class="eq">F = <span class="muted">MS<sub>between</sub> ⁄ MS<sub>within</sub></span></div><div class="work">wage across ${kG} education groups → F ≈ <b>${Fstat.toFixed(1)}</b>, df (${dfB}, ${dfW})</div><div class="note">Reject if F &gt; ${Fcrit}. With 2 groups, F = t².</div>`;
+
+  FORMS.mftest=`<div class="eq">t = <span class="muted">(x̄<sub>loan</sub> − x̄<sub>ctrl</sub>) ⁄ √(s²<sub>p</sub>(1⁄n₁+1⁄n₂))</span></div><div class="work">$${mL.toFixed(0)} vs $${mC.toFixed(0)} → t ≈ <b>${tMF.toFixed(1)}</b>, df ${dfMF}</div><div class="note">Reject if |t| &gt; ${tCritMF} → the loan raised income.</div>`;
+
+  FORMS.anova=`<div class="eq">F = <span class="muted">MS<sub>between</sub> ⁄ MS<sub>within</sub></span></div><div class="work">= ${hMSB.toFixed(1)} ⁄ ${hMSW.toFixed(1)} ≈ <b>${hF.toFixed(1)}</b>, df (${hdfB}, ${hdfW})</div><div class="note">Reject if F &gt; ${hFcrit} → the group means differ.</div>`;
+
+  // ---------- steps ----------
+  const LK=['axis','curve','mean','median','mode','range','dev','cv','zsc','shape','iqr','mad','zthr','outRing','typesViz','visCat','visNum','visTwo','corrViz','regViz','whyViz','csvChart','povCat','povNum','povRel','zTest','tTest','chiTest','fTest','mfBar','mfTest','hBar','hF','ctBar'];
+  const lay=o=>{const m={};LK.forEach(k=>m[k]=o[k]||0);return m;};
+  const S=(w,s,o)=>Object.assign({w,s},o);
+  const STEPS=[
+    S('Contents','Tap any topic below to jump straight to it — or press Next to begin from the start.',{panel:'toc',lay:lay({}),pts:'hidden'}),
+    S('About the Author','Dr. Ngoun Sethykun — the economist and educator behind this course.',{panel:'bio',lay:lay({}),pts:'hidden'}),
+    S('Why Statistics Matters','Numbers turn opinion into evidence. Statistics is how we cut through the noise to decide under uncertainty — and how a society sees its own facts: prices, health, incomes, trends.',{lay:lay({whyViz:1}),pts:'hidden'}),
+    S('Quiz','A 10-minute check — answer the multiple-choice questions, then reveal the correct answers or tally your score. The timer runs while you\u2019re on this slide.',{panel:'quiz',lay:lay({}),pts:'hidden'}),
+    S('Types of Variables','Before we measure anything — what kind of data is it? Every variable sits somewhere on this ladder, from names to true numbers.',{panel:'table',lay:lay({}),pts:'hidden'}),
+    S('Nominal','Categories that are pure labels — no order to rank them by. Qualitative.',{kind:'type',typeId:'nominal',lay:lay({typesViz:1}),pts:'hidden'}),
+    S('Ordinal','Categories with a real order, though the gaps between them may be uneven. Qualitative.',{kind:'type',typeId:'ordinal',lay:lay({typesViz:1}),pts:'hidden'}),
+    S('Discrete','Counted numbers — whole values with nothing in between. Quantitative.',{kind:'type',typeId:'discrete',lay:lay({typesViz:1}),pts:'hidden'}),
+    S('Continuous','Measured numbers that can take any value, decimals and all. Quantitative.',{kind:'type',typeId:'continuous',lay:lay({typesViz:1}),pts:'hidden'}),
+    S('Interval','Equal gaps and meaningful differences — but the zero is arbitrary, so ratios don\u2019t hold. Quantitative.',{kind:'type',typeId:'interval',lay:lay({typesViz:1}),pts:'hidden'}),
+    S('Ratio','Equal gaps AND a true zero, so both differences and ratios make sense. Quantitative.',{kind:'type',typeId:'ratio',lay:lay({typesViz:1}),pts:'hidden'}),
+    S('Organizing Categorical Data','Turn raw labels into a summary table of counts and percentages — or a contingency table that cross-tabulates two categorical variables.',{panel:'orgCat',lay:lay({}),pts:'hidden'}),
+    S('Contingency Table','Cross-tabulate two categorical variables — each cell is the joint count, the margins are the totals, and row % compares the groups.',{panel:'ctable',lay:lay({}),pts:'hidden'}),
+    S('Organizing Numerical Data','Sort into an ordered array, then bin into a frequency distribution — with relative, percentage, and cumulative columns.',{panel:'orgNum',lay:lay({}),pts:'hidden'}),
+    S('Visualizing Categorical Data','The same category counts, seen four ways: bar, pie, Pareto (sorted with a cumulative line), and side-by-side bars.',{lay:lay({visCat:1}),pts:'hidden'}),
+    S('Categorical Charts in Excel','Enter Category & Frequency, then let Excel build each one — including a one-click Pareto.',{panel:'xlCat',lay:lay({}),pts:'hidden'}),
+    S('Visualizing Numerical Data','A distribution shown four ways: stem-and-leaf, histogram, percentage polygon, and the cumulative ogive.',{lay:lay({visNum:1}),pts:'hidden'}),
+    S('Numerical Charts in Excel','A statistic-chart Histogram, a Line for the polygon and ogive, and a formula trick for stem-and-leaf.',{panel:'xlNum',lay:lay({}),pts:'hidden'}),
+    S('Visualizing Two Numerical Variables','Plot one variable against another: a scatter plot for relationships, a time-series plot for change over time.',{lay:lay({visTwo:1}),pts:'hidden'}),
+    S('Two-Variable Charts in Excel','Scatter (X Y) with a trendline for relationships; a Line chart over dates for time series.',{panel:'xlTwo',lay:lay({}),pts:'hidden'}),
+    S('Organizing Multidimensional Data','Cross-classify three or more variables at once — the pivot table behind every dashboard.',{panel:'orgMulti',lay:lay({}),pts:'hidden'}),
+    S('Charts — Every Tool','Every chart type — bar, pie, histogram, boxplot, scatter, line — in Excel, Stata, EViews, SPSS, Python, R, and as an AI prompt.',{panel:'chChart',lay:lay({}),pts:'hidden'}),
+    S('Unstructured','Now take one ratio variable — a cloud of numbers, scattered with no order at all.',{lay:lay({}),pts:'scatter'}),
+    S('Structured','Sort and stack them: a bell shape emerges, and one value sits far apart — an outlier.',{lay:lay({axis:1,curve:.32}),pts:'settled'}),
+    S('Mean',`The balance point — every value added up and divided by n. x̄ = ${f(mean)}`,{lay:lay({axis:1,curve:.12,mean:1}),pts:'settled'}),
+    S('Median',`The middle of the sorted data. = ${f(median)}`,{lay:lay({axis:1,curve:.12,mean:.35,median:1}),pts:'settled'}),
+    S('Mode',`The value that appears most — the tallest stack. = ${f(mode)}`,{lay:lay({axis:1,curve:.12,mean:.25,median:.28,mode:1}),pts:'settled'}),
+    S('Range',`The full spread, smallest to largest. ${maxV} − ${minV} = ${range}`,{lay:lay({axis:1,curve:.12,mean:.2,median:.15,mode:.35,range:1}),pts:'settled'}),
+    S('Deviations','The distance from every point back to the mean.',{lay:lay({axis:1,curve:.1,mean:1,range:.15,dev:1}),pts:'settled'}),
+    S('Variance','Square those distances and average them. The shape you built is a normal distribution — variance is how wide its bell spreads.',{lay:lay({axis:1,curve:1,mean:.55,dev:.5}),pts:'settled',form:'var',arrow:[648,446]}),
+    S('Dividing by n or n-1','Population variance divides by n; sample variance divides by n − 1. Here is why — and when each one is the right choice.',{panel:'nvn1',lay:lay({}),pts:'hidden'}),
+    S('Standard Deviation vs Standard Error','SD says how spread the data are; SE says how precisely the sample mean is pinned down. SE = SD ⁄ √n, so it shrinks as the sample grows.',{panel:'sdse',lay:lay({}),pts:'hidden'}),
+    S('Coefficient of Variation',`Spread against the mean: σ ⁄ x̄ ≈ ${cv.toFixed(0)}%. Compares scatter across datasets of different scales.`,{lay:lay({axis:1,curve:.5,mean:.4,cv:1}),pts:'settled',form:'cv',arrow:[426,352]}),
+    S('Z-Scores',`Re-scale the axis into standard deviations from the mean. The outlier lands about ${zOut.toFixed(1)}σ out.`,{lay:lay({axis:1,curve:.5,mean:.4,zsc:1}),pts:'settled',form:'z',arrow:[612,332]}),
+    S('Shape',`Symmetric, or skewed? The outlier pulls the mean past the median (${f(mean)} > ${f(median)}) — a positive, right skew.`,{lay:lay({axis:.2,shape:1}),pts:'dim',form:'shape',arrow:[790,300]}),
+    S('Descriptive Stats — Every Tool','The same measures — mean, median, mode, SD, variance, quartiles, skewness — in Excel, Stata, EViews, SPSS, Python, R, and as an AI prompt.',{panel:'chDesc',lay:lay({}),pts:'hidden'}),
+    S('Outliers',`One point, ${OUT}, sits far from the rest. Is that just noise — or does a rule call it an outlier?`,{lay:lay({axis:1,curve:.4,outRing:1}),pts:'settled',form:'outIntro',arrow:[830,430]}),
+    S('IQR Method','Build a box from the quartiles; anything past the fences is flagged. Robust — the outlier itself never moves them.',{lay:lay({axis:1,iqr:1,outRing:1}),pts:'focus',form:'iqr',arrow:[vx(UF),402]}),
+    S('IQR — Five-Number Summary','The five-number summary, worked out step by step: Q0 (min) → Q1 → Q2 (median) → Q3 → Q4 (max), then the fences that flag an outlier.',{panel:'iqrDetail',lay:lay({}),pts:'hidden'}),
+    S('IQR at Scale','For thousands of rows you let software apply the exact same rule — in Excel, Stata, Python, R, or even an AI prompt.',{panel:'iqrCode',lay:lay({}),pts:'hidden'}),
+    S('Z-Score Method','Measure each point in standard deviations. Beyond ±3σ is treated as an outlier.',{lay:lay({axis:1,curve:.4,zthr:1,outRing:1}),pts:'focus',form:'zmethod',arrow:[vx(mean+3*std),360]}),
+    S('Modified Z-Score','Swap mean & σ for median & MAD — resistant to the very outliers it hunts. Flag when |M| > 3.5.',{lay:lay({axis:1,mad:1,outRing:1}),pts:'focus',form:'mad',arrow:[830,412]}),
+    S('Outliers — Every Tool','The IQR, z-score and MAD rules in Excel, Stata, EViews, SPSS, Python, R, and as an AI prompt.',{panel:'chOut',lay:lay({}),pts:'hidden'}),
+    S('Hypothesis Testing','Is a difference real, or just chance? A test weighs the evidence against a null of "no effect", then decides at α = 0.05.',{panel:'htIntro',lay:lay({}),pts:'hidden'}),
+    S('Z-Test',`Does mean satisfaction beat neutral (3)? With σ ≈ ${rsdS.toFixed(2)}, z ≈ ${zStat.toFixed(2)} lands deep in the tail — a real difference.`,{lay:lay({zTest:1}),pts:'hidden',form:'ztest'}),
+    S('T-Test (Two Groups)',`Do male- and female-headed households earn the same? A two-sample t compares $${mMean.toFixed(2)} against $${fMean.toFixed(2)}.`,{lay:lay({tTest:1}),pts:'hidden',form:'ttest'}),
+    S('Chi-Square Test','Is brand preference independent of gender? χ² compares the observed counts with what independence would predict.',{lay:lay({chiTest:1}),pts:'hidden',form:'chitest'}),
+    S('F-Test / ANOVA (Many Groups)','Are wages equal across all four education levels? ANOVA\u2019s F pits the spread between groups against the spread within them.',{lay:lay({fTest:1}),pts:'hidden',form:'ftest'}),
+    S('Running the Tests: Stata · Excel · AI','Each test in Stata, in Excel, and as an AI prompt — pick your tool.',{panel:'htHow',lay:lay({}),pts:'hidden'}),
+    S('Tests — Every Tool','t, z, chi-square and ANOVA in Excel, Stata, EViews, SPSS, Python, R, and as an AI prompt.',{panel:'chTest',lay:lay({}),pts:'hidden'}),
+    S('Correlation',`Strength and direction of a straight-line link — r runs from −1 to +1. For 10 employees, salary vs experience gives r ≈ ${rC.toFixed(2)}: a very strong positive relationship.`,{lay:lay({corrViz:1}),pts:'hidden',form:'corr',arrow:[470,284]}),
+    S('Linear Regression',`Fit the best straight line, ŷ = b₀ + b₁x. Slope ≈ ${b1.toFixed(2)}: each extra year of experience adds about $${b1.toFixed(1)}k to salary. The red gaps are the residuals it minimizes.`,{lay:lay({regViz:1}),pts:'hidden',form:'reg',arrow:[470,300]}),
+    S('Correlation & Regression — Stata · Excel · AI','The same real-data analysis three ways — Stata, Excel, or an AI prompt — plus how to read the output.',{panel:'staReg',lay:lay({}),pts:'hidden'}),
+    S('Regression — Every Tool','Correlation and regression in Excel, Stata, EViews, SPSS, Python, R, and as an AI prompt.',{panel:'chReg',lay:lay({}),pts:'hidden'}),
+    S('Case Study: Brand Survey','A real workflow, end to end: a 30-person satisfaction survey for Brand X. Here is the questionnaire and the rating scale we will analyse.',{panel:'csvSurvey',lay:lay({}),pts:'hidden'}),
+    S('Raw Data','The 30 raw responses to Q1, exactly as they were collected.',{panel:'csvRaw',lay:lay({}),pts:'hidden'}),
+    S('Arranged in a Table','Count how often each rating appears — the frequency distribution, with percentages and a running total.',{panel:'csvFreq',lay:lay({}),pts:'hidden'}),
+    S('The Chart','The same table as a bar chart — the shape of customer sentiment at a glance.',{lay:lay({csvChart:1}),pts:'hidden'}),
+    S('Descriptive Statistics','Summarise the ratings in one screen of numbers — centre, spread, and sentiment shares.',{panel:'csvStats',lay:lay({}),pts:'hidden'}),
+    S('Interpretation','What does it all mean for the brand? Turning the numbers into a decision.',{panel:'csvInterp',lay:lay({}),pts:'hidden'}),
+    S('Case Study: Poverty','A second, richer workflow: 30 households and five variables — education, size, wage, transport, and who heads the family. Which are poor, and why?',{panel:'povIntro',lay:lay({}),pts:'hidden'}),
+    S('Household Data','The raw records — every household with its five values.',{panel:'povRaw',lay:lay({}),pts:'hidden'}),
+    S('Categorical Variables','Counts for the three categorical variables: education, transportation, and head of family.',{lay:lay({povCat:1}),pts:'hidden'}),
+    S('Numerical Variables','Distributions of the two numerical variables: household size and wage per hour.',{lay:lay({povNum:1}),pts:'hidden'}),
+    S('Poverty Statistics','The numbers side by side — centre and spread for the numeric variables, most-common for the categorical ones.',{panel:'povStats',lay:lay({}),pts:'hidden'}),
+    S('Wage & Poverty','The key patterns: mean wage rises with education, and male-headed households out-earn female-headed ones.',{lay:lay({povRel:1}),pts:'hidden'}),
+    S('Poverty — Interpretation','Putting it together — where poverty concentrates, and what to do about it.',{panel:'povInterp',lay:lay({}),pts:'hidden'}),
+    S('Case Study: Microfinance','Building on those households: split them into a group that received a microfinance loan and one that did not, then compare income after a year.',{panel:'mfIntro',lay:lay({}),pts:'hidden'}),
+    S('Loan vs No-Loan Data','The two groups side by side — each household\u2019s income before and after, and the gain.',{panel:'mfRaw',lay:lay({}),pts:'hidden'}),
+    S('Before vs After','Mean income before and after, for the loan and no-loan groups — the loan group\u2019s jump stands out.',{lay:lay({mfBar:1}),pts:'hidden'}),
+    S('Two-Sample t-Test','Is that gap real or chance? A two-sample t-test compares the two groups\u2019 after income.',{lay:lay({mfTest:1}),pts:'hidden',form:'mftest'}),
+    S('Results Table','The numbers behind the test — group means, gains, the t statistic, and the decision.',{panel:'mfStats',lay:lay({}),pts:'hidden'}),
+    S('Microfinance — Interpretation','What it means: the size of the loan effect, whether it is significant, and the caveats.',{panel:'mfInterp',lay:lay({}),pts:'hidden'}),
+    S('Case Study: Health (ANOVA)','A health-sector study: three blood-pressure drugs compared on how much they lower systolic BP. With three groups, we use one-way ANOVA.',{panel:'hIntro',lay:lay({}),pts:'hidden'}),
+    S('Trial Data','The trial records — every patient\u2019s BP reduction, tagged by which drug they took.',{panel:'hRaw',lay:lay({}),pts:'hidden'}),
+    S('Group Means','Mean reduction per drug (the bars), with each patient as a dot — big gaps between groups, tight scatter within.',{lay:lay({hBar:1}),pts:'hidden'}),
+    S('One-Way ANOVA','ANOVA\u2019s F pits the spread between the drug means against the spread within each drug.',{lay:lay({hF:1}),pts:'hidden',form:'anova'}),
+    S('ANOVA Table','The full ANOVA table — sums of squares, degrees of freedom, mean squares, and F.',{panel:'hAnova',lay:lay({}),pts:'hidden'}),
+    S('Health — Interpretation','What it means for treatment: the drugs differ, which works best, and why a post-hoc test comes next.',{panel:'hInterp',lay:lay({}),pts:'hidden'}),
+    S('Case Study: Cambodia–Thailand','A qualitative study: comparing the Cambodia–Thailand relationship across politics, economics and culture to see where each holds a comparative advantage.',{panel:'ctIntro',lay:lay({}),pts:'hidden'}),
+    S('The Qualitative Data','Coded themes from the sources — the raw material of qualitative analysis, sorted by dimension.',{panel:'ctData',lay:lay({}),pts:'hidden'}),
+    S('Theme Frequency','Content analysis turns text into counts: how often each theme appears, coloured by dimension.',{lay:lay({ctBar:1}),pts:'hidden'}),
+    S('Comparative Matrix','Cambodia vs Thailand, side by side across the three dimensions — the relative strengths of each.',{panel:'ctMatrix',lay:lay({}),pts:'hidden'}),
+    S('SWOT — Cambodia','Cambodia through the SWOT lens — internal strengths and weaknesses, external opportunities and threats.',{panel:'swotKh',lay:lay({}),pts:'hidden'}),
+    S('SWOT — Thailand','Thailand through the same lens — the mirror of Cambodia\u2019s position.',{panel:'swotTh',lay:lay({}),pts:'hidden'}),
+    S('Comparative Advantage — Interpretation','Where each country leads, and why combining complementary strengths beats contesting them.',{panel:'ctInterp',lay:lay({}),pts:'hidden'}),
+    S('Python IDE','Write Python on the left, run it, and see text and plots on the right. Powered by Pyodide — open this file in a browser (with internet) to run.',{panel:'ide',lay:lay({}),pts:'hidden'}),
+  ];
+  const L={axis:document.getElementById('axis'),curve:document.getElementById('curveL'),mean:document.getElementById('meanL'),
+    median:document.getElementById('medianL'),mode:document.getElementById('modeL'),range:document.getElementById('rangeL'),
+    dev:document.getElementById('devL'),cv:document.getElementById('cvL'),zsc:document.getElementById('zL'),
+    shape:document.getElementById('shapeL'),iqr:document.getElementById('iqrL'),mad:document.getElementById('madL'),
+    zthr:document.getElementById('zthrL'),outRing:document.getElementById('outRingL'),typesViz:document.getElementById('typesViz'),
+    visCat:document.getElementById('visCat'),visNum:document.getElementById('visNum'),visTwo:document.getElementById('visTwo'),
+    corrViz:document.getElementById('corrViz'),regViz:document.getElementById('regViz'),whyViz:document.getElementById('whyViz'),
+    csvChart:document.getElementById('csvChart'),povCat:document.getElementById('povCat'),povNum:document.getElementById('povNum'),povRel:document.getElementById('povRel'),
+    zTest:document.getElementById('zTest'),tTest:document.getElementById('tTest'),chiTest:document.getElementById('chiTest'),fTest:document.getElementById('fTest'),
+    mfBar:document.getElementById('mfBar'),mfTest:document.getElementById('mfTest'),hBar:document.getElementById('hBar'),hF:document.getElementById('hF'),ctBar:document.getElementById('ctBar')};
+  const cap=document.getElementById('cap'),kicker=document.getElementById('kicker'),word=document.getElementById('word'),
+    sub=document.getElementById('sub'),formula=document.getElementById('formula'),body=document.body,
+    nextB=document.getElementById('next'),backB=document.getElementById('back'),menuB=document.getElementById('menu'),
+    tbl=document.getElementById('typesTable'),svgEl=document.getElementById('svg'),tocEl=document.getElementById('toc'),bioEl=document.getElementById('bio'),quizEl=document.getElementById('quiz'),
+    iqrDetailEl=document.getElementById('iqrDetail'),iqrCodeEl=document.getElementById('iqrCode'),
+    orgCatEl=document.getElementById('orgCat'),orgNumEl=document.getElementById('orgNum'),orgMultiEl=document.getElementById('orgMulti'),ctableEl=document.getElementById('ctable'),
+    xlCatEl=document.getElementById('xlCat'),xlNumEl=document.getElementById('xlNum'),xlTwoEl=document.getElementById('xlTwo'),
+    staRegEl=document.getElementById('staReg'),nvn1El=document.getElementById('nvn1'),sdseEl=document.getElementById('sdse'),
+    csvSurveyEl=document.getElementById('csvSurvey'),csvRawEl=document.getElementById('csvRaw'),csvFreqEl=document.getElementById('csvFreq'),
+    csvStatsEl=document.getElementById('csvStats'),csvInterpEl=document.getElementById('csvInterp'),
+    povIntroEl=document.getElementById('povIntro'),povRawEl=document.getElementById('povRaw'),povStatsEl=document.getElementById('povStats'),povInterpEl=document.getElementById('povInterp'),
+    htIntroEl=document.getElementById('htIntro'),htHowEl=document.getElementById('htHow'),
+    mfIntroEl=document.getElementById('mfIntro'),mfRawEl=document.getElementById('mfRaw'),mfStatsEl=document.getElementById('mfStats'),mfInterpEl=document.getElementById('mfInterp'),
+    hIntroEl=document.getElementById('hIntro'),hRawEl=document.getElementById('hRaw'),hAnovaEl=document.getElementById('hAnova'),hInterpEl=document.getElementById('hInterp'),
+    chDescEl=document.getElementById('chDesc'),chChartEl=document.getElementById('chChart'),chOutEl=document.getElementById('chOut'),chRegEl=document.getElementById('chReg'),chTestEl=document.getElementById('chTest'),
+    ctIntroEl=document.getElementById('ctIntro'),ctDataEl=document.getElementById('ctData'),ctMatrixEl=document.getElementById('ctMatrix'),ctInterpEl=document.getElementById('ctInterp'),
+    swotKhEl=document.getElementById('swotKh'),swotThEl=document.getElementById('swotTh'),ideEl=document.getElementById('ide'),
+    arrowPath=document.getElementById('arrowPath'),arrowL=document.getElementById('arrowL');
+  let step=0; const N=STEPS.length;
+  const setLayer=(el,o)=>{el.style.opacity=o;el.classList.toggle('on',o>0.05);};
+
+  function drawArrow(){const st=STEPS[step],t=st.arrow;if(!t)return;const ctm=svgEl.getScreenCTM();if(!ctm)return;
+    const cr=formula.getBoundingClientRect();const pt=svgEl.createSVGPoint();pt.x=cr.left+18;pt.y=cr.bottom-4;
+    const s=pt.matrixTransform(ctm.inverse());const[ex,ey]=t;
+    const c1x=s.x-(s.x-ex)*0.08,c1y=s.y+(ey-s.y)*0.45,c2x=ex+(s.x-ex)*0.30,c2y=ey-(ey-s.y)*0.28;
+    arrowPath.setAttribute('d',`M ${s.x.toFixed(1)} ${s.y.toFixed(1)} C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${ex} ${ey}`);}
+  window.addEventListener('resize',drawArrow);
+
+  const track=document.getElementById('track');
+  for(let i=0;i<N;i++)track.appendChild(document.createElement('i'));
+  const dots=[...track.children];
+
+  function goTo(i){ step=Math.max(0,Math.min(N-1,i)); render(); }
+  (function buildTOC(){
+    const SECTIONS=[
+      ['Foundations',['About the Author','Why Statistics Matters','Quiz','Types of Variables','Nominal','Ordinal','Discrete','Continuous','Interval','Ratio']],
+      ['Organizing & Visualizing',['Organizing Categorical Data','Contingency Table','Organizing Numerical Data','Visualizing Categorical Data','Categorical Charts in Excel','Visualizing Numerical Data','Numerical Charts in Excel','Visualizing Two Numerical Variables','Two-Variable Charts in Excel','Organizing Multidimensional Data','Charts — Every Tool']],
+      ['Describing One Variable',['Unstructured','Structured','Mean','Median','Mode','Range','Deviations','Variance','Dividing by n or n-1','Standard Deviation vs Standard Error','Coefficient of Variation','Z-Scores','Shape','Descriptive Stats — Every Tool']],
+      ['Outliers',['Outliers','IQR Method','IQR — Five-Number Summary','IQR at Scale','Z-Score Method','Modified Z-Score','Outliers — Every Tool']],
+      ['Hypothesis Testing',['Hypothesis Testing','Z-Test','T-Test (Two Groups)','Chi-Square Test','F-Test / ANOVA (Many Groups)','Running the Tests: Stata · Excel · AI','Tests — Every Tool']],
+      ['Relationships',['Correlation','Linear Regression','Correlation & Regression — Stata · Excel · AI','Regression — Every Tool']],
+      ['Case Study: Brand Survey',['Case Study: Brand Survey','Raw Data','Arranged in a Table','The Chart','Descriptive Statistics','Interpretation']],
+      ['Case Study: Poverty',['Case Study: Poverty','Household Data','Categorical Variables','Numerical Variables','Poverty Statistics','Wage & Poverty','Poverty — Interpretation']],
+      ['Case Study: Microfinance',['Case Study: Microfinance','Loan vs No-Loan Data','Before vs After','Two-Sample t-Test','Results Table','Microfinance — Interpretation']],
+      ['Case Study: Health',['Case Study: Health (ANOVA)','Trial Data','Group Means','One-Way ANOVA','ANOVA Table','Health — Interpretation']],
+      ['Case Study: Cambodia–Thailand',['Case Study: Cambodia–Thailand','The Qualitative Data','Theme Frequency','Comparative Matrix','SWOT — Cambodia','SWOT — Thailand','Comparative Advantage — Interpretation']],
+      ['Playground',['Python IDE']],
+    ];
+    const idxOf=t=>STEPS.findIndex(s=>s.w===t);
+    let h='<div class="tocgrid">';
+    SECTIONS.forEach(([name,items])=>{h+=`<div class="tocsec"><div class="th">${name}</div>`;
+      items.forEach(t=>{const i=idxOf(t);if(i<0)return;
+        h+=`<button class="tocitem" data-i="${i}"><span class="n">${String(i+1).padStart(2,'0')}</span>${t}</button>`;});
+      h+='</div>';});
+    tocEl.innerHTML=h+'</div>';
+    tocEl.addEventListener('click',e=>{const b=e.target.closest('.tocitem');if(b)goTo(+b.dataset.i);});
+  })();
+  menuB.addEventListener('click',()=>goTo(0));
+
+  // ---------- python IDE (Pyodide) ----------
+  (function(){
+    const runBtn=document.getElementById('pyRun'),code=document.getElementById('pyCode'),data=document.getElementById('pyData'),
+      out=document.getElementById('pyOut'),img=document.getElementById('pyImg'),status=document.getElementById('pyStatus');
+    if(!runBtn) return;
+    let py=null,loading=null; const setStatus=s=>{status.textContent=s;};
+    const loadScript=src=>new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('script load failed'));document.head.appendChild(s);});
+    async function ensure(){
+      if(py) return py;
+      if(loading) return loading;
+      loading=(async()=>{
+        setStatus('Loading Python runtime… (~10 MB, needs internet)');
+        const PURL='https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
+        if(typeof loadPyodide==='undefined') await loadScript(PURL+'pyodide.js');
+        py=await loadPyodide({indexURL:PURL});
+        setStatus('Loading numpy & matplotlib…');
+        await py.loadPackage(['numpy','pandas','matplotlib']);
+        await py.runPythonAsync("import matplotlib; matplotlib.use('AGG')");
+        setStatus('Ready.'); return py;
+      })();
+      return loading;
+    }
+    async function run(){
+      out.textContent=''; img.innerHTML='';
+      try{
+        const p=await ensure();
+        p.globals.set('__src',code.value);
+        p.globals.set('__data',data.value);
+        await p.runPythonAsync(`
+import sys, io, traceback, base64
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+__buf=io.StringIO(); __o=sys.stdout; __e=sys.stderr
+sys.stdout=__buf; sys.stderr=__buf
+plt.close('all')
+df=None
+try:
+    if __data and __data.strip():
+        df=pd.read_csv(io.StringIO(__data), sep=None, engine='python')
+        for __c in df.columns:
+            if isinstance(__c, str) and __c.isidentifier():
+                globals()[__c]=df[__c]
+except Exception:
+    traceback.print_exc()
+try:
+    exec(__src, globals())
+except Exception:
+    traceback.print_exc()
+finally:
+    sys.stdout=__o; sys.stderr=__e
+__imgs=[]
+for __n in plt.get_fignums():
+    __f=plt.figure(__n); __b=io.BytesIO()
+    __f.savefig(__b, format='png', dpi=110, bbox_inches='tight'); __b.seek(0)
+    __imgs.append(base64.b64encode(__b.read()).decode())
+plt.close('all')
+__txt=__buf.getvalue()
+`);
+        const txt=p.globals.get('__txt'), imgs=p.globals.get('__imgs').toJs();
+        out.textContent = txt && txt.length ? txt : '(ran with no text output)';
+        imgs.forEach(b=>{const im=document.createElement('img');im.className='pyfig';im.src='data:image/png;base64,'+b;img.appendChild(im);});
+        setStatus('Ready.');
+      }catch(err){
+        out.textContent='Could not run Python: '+err.message+'\n\nIf you are viewing this inside the Claude preview, download the file and open it in a browser (with internet) to run Python.';
+        setStatus('');
+      }
+    }
+    runBtn.addEventListener('click',run);
+    code.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const s=code.selectionStart,en=code.selectionEnd;code.value=code.value.slice(0,s)+'    '+code.value.slice(en);code.selectionStart=code.selectionEnd=s+4;}});
+  })();
+
+  function render(){
+    const st=STEPS[step]; body.dataset.step=step;
+    for(const k in L) setLayer(L[k],st.lay[k]);
+    const panels={toc:tocEl,bio:bioEl,quiz:quizEl,table:tbl,iqrDetail:iqrDetailEl,iqrCode:iqrCodeEl,orgCat:orgCatEl,orgNum:orgNumEl,orgMulti:orgMultiEl,ctable:ctableEl,xlCat:xlCatEl,xlNum:xlNumEl,xlTwo:xlTwoEl,staReg:staRegEl,nvn1:nvn1El,sdse:sdseEl,csvSurvey:csvSurveyEl,csvRaw:csvRawEl,csvFreq:csvFreqEl,csvStats:csvStatsEl,csvInterp:csvInterpEl,povIntro:povIntroEl,povRaw:povRawEl,povStats:povStatsEl,povInterp:povInterpEl,htIntro:htIntroEl,htHow:htHowEl,mfIntro:mfIntroEl,mfRaw:mfRawEl,mfStats:mfStatsEl,mfInterp:mfInterpEl,hIntro:hIntroEl,hRaw:hRawEl,hAnova:hAnovaEl,hInterp:hInterpEl,chDesc:chDescEl,chChart:chChartEl,chOut:chOutEl,chReg:chRegEl,chTest:chTestEl,ctIntro:ctIntroEl,ctData:ctDataEl,ctMatrix:ctMatrixEl,ctInterp:ctInterpEl,swotKh:swotKhEl,swotTh:swotThEl,ide:ideEl};
+    for(const k in panels) panels[k].classList.toggle('on', st.panel===k);
+    if(st.panel==='quiz') startQuizTimer(); else pauseQuizTimer();
+    body.classList.toggle('drifton', st.pts==='scatter');
+
+    if(st.kind==='type'){ setLayer(L.typesViz,0); drawType(st.typeId); requestAnimationFrame(()=>setLayer(L.typesViz,1)); }
+
+    if(st.form){ formula.innerHTML=FORMS[st.form]; formula.classList.add('on'); } else formula.classList.remove('on');
+    cl.classList.toggle('on',st.w==='Variance');
+
+    const showArrow=!!st.arrow; setLayer(arrowL,showArrow?1:0);
+    if(showArrow){ drawArrow(); setTimeout(drawArrow,880); }
+
+    const pm=st.pts;
+    gPts.style.opacity = pm==='hidden'?0 : pm==='dim'?0.12 : 1;
+    DATA.forEach(d=>{
+      const p=pm==='scatter'?{x:d.rx,y:d.ry}:settled(d);
+      d.el.setAttribute('transform',`translate(${p.x},${p.y})`);
+      let fill='var(--cool)',glow='rgba(79,208,255,.5)',r=R,op=1;
+      const structured = pm!=='scatter' && pm!=='hidden';
+      if(structured && d.outlier){fill='var(--outlier)';glow='rgba(255,95,109,.75)';r=R+1;}
+      if((st.w==='Mode'||st.w==='Range')&&!d.outlier&&d.v===mode){fill='var(--mag)';glow='rgba(255,119,217,.7)';}
+      if(pm==='focus'&&!d.outlier) op=0.16;
+      d.dot.setAttribute('fill',fill);d.dot.setAttribute('r',r);d.dot.setAttribute('opacity',op);
+      d.dot.setAttribute('filter',`drop-shadow(0 0 ${d.outlier&&structured?11:7}px ${glow})`);
+    });
+
+    cap.classList.remove('swap-in');void cap.offsetWidth;
+    kicker.textContent=String(step+1).padStart(2,'0');
+    word.textContent=st.w; sub.textContent=st.s;
+    requestAnimationFrame(()=>cap.classList.add('swap-in'));
+    dots.forEach((dt,i)=>dt.className=i<step?'done':i===step?'cur':'');
+    backB.disabled=step===0; nextB.textContent=step===N-1?'↻ Restart':'Next →';
+  }
+  function go(dir){ step=dir>0?(step===N-1?0:step+1):Math.max(0,step-1); render(); }
+  nextB.addEventListener('click',()=>go(1));
+  backB.addEventListener('click',()=>go(-1));
+  window.addEventListener('keydown',e=>{
+    const tag=(e.target.tagName||'').toLowerCase(); if(tag==='textarea'||tag==='input'||e.target.isContentEditable) return;
+    if(['ArrowRight',' ','Enter'].includes(e.key)){e.preventDefault();go(1);}
+    else if(e.key==='ArrowLeft'){e.preventDefault();go(-1);}
+    else if(e.key==='r'||e.key==='R'){step=0;render();}});
+  document.querySelector('.viz').addEventListener('click',e=>{if(e.target.closest('.typesTable,.panelBox'))return;go(1);});
+
+  const stars=document.getElementById('stars');
+  for(let i=0;i<48;i++){const s=document.createElement('i');s.style.left=Math.random()*100+'%';s.style.top=Math.random()*100+'%';
+    s.style.animationDelay=(Math.random()*6)+'s';s.style.transform=`scale(${.6+Math.random()*1.4})`;stars.appendChild(s);}
+  render();
+})();
+</script>
+</body>
+</html>
